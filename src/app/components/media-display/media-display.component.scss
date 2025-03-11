@@ -1,8 +1,8 @@
 .media-container {
   position: relative;
-  margin-bottom: 16px;
   border-radius: 4px;
   overflow: hidden;
+  background-color: #f5f5f5;
 }
 
 .media-display {
@@ -10,7 +10,6 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f0f0f0;
   overflow: hidden;
   max-height: 500px;
   min-height: 200px;
@@ -34,21 +33,21 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.85);
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 2;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 1);
     transform: translateY(-50%) scale(1.1);
   }
 
@@ -59,9 +58,10 @@
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    transform: translateY(-50%);
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.7);
+      background-color: rgba(255, 255, 255, 0.85);
       transform: translateY(-50%);
     }
   }
@@ -78,6 +78,13 @@
     font-size: 24px;
     color: #333;
   }
+
+  // Fallback SVG icons
+  .fallback-icon {
+    fill: #333;
+    width: 24px;
+    height: 24px;
+  }
 }
 
 .media-pagination {
@@ -87,21 +94,24 @@
   position: absolute;
   bottom: 12px;
   width: 100%;
+  z-index: 2;
 }
 
 .pagination-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 255, 0.6);
   margin: 0 4px;
   padding: 0;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: scale(1.2);
   }
 
   &.active {
@@ -115,6 +125,28 @@
 @media (max-width: 768px) {
   .media-display {
     max-height: 400px;
+    min-height: 180px;
+  }
+
+  .nav-btn {
+    width: 36px;
+    height: 36px;
+
+    .material-icons {
+      font-size: 22px;
+    }
+  }
+
+  .pagination-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+@media (max-width: 480px) {
+  .media-display {
+    max-height: 300px;
+    min-height: 150px;
   }
 
   .nav-btn {
@@ -124,11 +156,5 @@
     .material-icons {
       font-size: 20px;
     }
-  }
-}
-
-@media (max-width: 480px) {
-  .media-display {
-    max-height: 300px;
   }
 }

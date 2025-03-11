@@ -1,7 +1,7 @@
 <!-- src/app/pages/home/home.component.html -->
-<app-top-bar></app-top-bar>
+<app-side-nav></app-side-nav>
 
-<div class="home-container">
+<div class="home-container" [class.sidebar-collapsed]="isSidebarCollapsed">
     <!-- Add the auth debugger only during development -->
     <app-auth-debug></app-auth-debug>
 

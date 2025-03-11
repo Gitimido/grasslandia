@@ -1,11 +1,16 @@
 .create-post-card {
   background-color: #fff;
   width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
 }
 
 .create-post-header {
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
+  background-color: #f9f9f9;
 
   h2 {
     font-size: 18px;
@@ -20,6 +25,7 @@
   display: flex;
   padding: 0;
   border-bottom: 1px solid #f0f0f0;
+  background-color: #fff;
 
   .type-button {
     flex: 1;
@@ -32,6 +38,7 @@
     cursor: pointer;
     color: #65676b;
     position: relative;
+    transition: all 0.2s ease;
 
     &:hover {
       background-color: #f7f8fa;
@@ -39,6 +46,7 @@
 
     &.active {
       color: #4a90e2;
+      font-weight: 500;
 
       &:after {
         content: "";
@@ -48,17 +56,17 @@
         right: 0;
         height: 3px;
         background-color: #4a90e2;
+        border-radius: 3px 3px 0 0;
       }
     }
 
     .material-icons {
       font-size: 24px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     span:not(.material-icons) {
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 13px;
     }
   }
 }
@@ -71,20 +79,24 @@
     min-height: 80px;
     resize: vertical;
     border: none;
-    padding: 8px 0;
+    padding: 12px;
     font-size: 16px;
     font-family: inherit;
+    background-color: #f0f2f5;
+    border-radius: 8px;
+    margin-bottom: 10px;
 
     &:focus {
       outline: none;
+      background-color: #e8eaed;
     }
 
     &::placeholder {
-      color: #999;
+      color: #8e8e8e;
     }
 
     &:disabled {
-      background-color: #fff;
+      background-color: #f8f8f8;
       color: #aaa;
     }
   }
@@ -92,10 +104,17 @@
   .media-upload {
     display: flex;
     justify-content: center;
-    padding: 16px;
+    padding: 24px;
     border: 2px dashed #e0e0e0;
     border-radius: 8px;
-    margin-top: 12px;
+    margin-top: 16px;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #4a90e2;
+      background-color: #f5f9ff;
+    }
 
     .upload-button {
       display: flex;
@@ -104,14 +123,20 @@
       gap: 8px;
       color: #4a90e2;
       cursor: pointer;
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.05);
+      }
 
       &.disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        transform: none;
       }
 
       .material-icons {
-        font-size: 32px;
+        font-size: 36px;
       }
 
       span:not(.material-icons) {
@@ -124,15 +149,25 @@
   .media-preview {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 12px;
     margin-top: 16px;
 
     .preview-item {
       position: relative;
-      width: 100px;
-      height: 100px;
+      width: 120px;
+      height: 120px;
       border-radius: 8px;
       overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: translateY(-3px);
+
+        .remove-file-btn {
+          opacity: 1;
+        }
+      }
 
       .media-thumbnail {
         width: 100%;
@@ -151,33 +186,37 @@
 
         .video-icon {
           color: #555;
-          font-size: 32px;
+          font-size: 36px;
         }
 
         .file-name {
-          font-size: 10px;
+          font-size: 11px;
           color: #777;
-          margin-top: 4px;
+          margin-top: 8px;
           max-width: 90px;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          padding: 0 6px;
+          text-align: center;
         }
       }
 
       .remove-file-btn {
         position: absolute;
-        top: 4px;
-        right: 4px;
-        width: 24px;
-        height: 24px;
+        top: 6px;
+        right: 6px;
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0, 0, 0, 0.6);
         border: none;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        opacity: 0.8;
+        transition: all 0.2s ease;
 
         .material-icons {
           color: #fff;
@@ -185,7 +224,12 @@
         }
 
         &:hover {
-          background-color: rgba(0, 0, 0, 0.7);
+          background-color: rgba(0, 0, 0, 0.8);
+          transform: scale(1.1);
+        }
+
+        &:active {
+          transform: scale(0.95);
         }
 
         &:disabled {
@@ -198,15 +242,17 @@
 
   .poll-options {
     margin-top: 16px;
-    padding: 16px;
+    padding: 20px;
     background-color: #f7f8fa;
     border-radius: 8px;
     text-align: center;
+    border: 1px dashed #ccc;
 
     .poll-message {
       color: #4a90e2;
       margin: 0;
       font-weight: 500;
+      font-size: 15px;
     }
   }
 
@@ -214,6 +260,10 @@
     margin-top: 16px;
     color: #e74c3c;
     font-size: 14px;
+    padding: 10px;
+    background-color: #fdeaea;
+    border-radius: 4px;
+    border-left: 3px solid #e74c3c;
   }
 }
 
@@ -223,6 +273,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: #f9f9f9;
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+  }
 
   .privacy-dropdown {
     position: relative;
@@ -231,15 +287,17 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      background: none;
+      background: #f0f2f5;
       border: none;
       color: #555;
       cursor: pointer;
-      padding: 8px;
-      border-radius: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      font-size: 14px;
 
       &:hover {
-        background-color: #f5f5f5;
+        background-color: #e4e6eb;
       }
 
       &:disabled {
@@ -248,25 +306,27 @@
       }
 
       .material-icons {
-        font-size: 20px;
+        font-size: 18px;
       }
 
       .dropdown-arrow {
         font-size: 16px;
+        margin-left: 2px;
       }
     }
 
     .privacy-options {
       position: absolute;
-      top: 100%;
+      bottom: 100%;
       left: 0;
-      width: 150px;
+      width: 180px;
       background-color: #fff;
-      border-radius: 4px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
       z-index: 10;
-      padding: 4px 0;
-      margin-top: 8px;
+      padding: 8px 0;
+      margin-bottom: 8px;
+      border: 1px solid #e0e0e0;
 
       .option-item {
         display: flex;
@@ -278,6 +338,7 @@
         background: none;
         text-align: left;
         cursor: pointer;
+        transition: background-color 0.2s ease;
 
         &:hover {
           background-color: #f5f5f5;
@@ -298,19 +359,26 @@
     background-color: #4a90e2;
     color: white;
     border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
+    border-radius: 6px;
+    padding: 8px 20px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    font-size: 15px;
 
     &:hover {
       background-color: #3a7bc8;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(1px);
     }
 
     &:disabled {
       background-color: #a4c6e8;
       cursor: not-allowed;
+      transform: none;
     }
   }
 }
@@ -325,5 +393,18 @@
     .post-button {
       align-self: flex-end;
     }
+  }
+
+  .media-preview .preview-item {
+    width: 100px;
+    height: 100px;
+  }
+
+  .create-post-types .type-button .material-icons {
+    font-size: 22px;
+  }
+
+  .create-post-types .type-button span:not(.material-icons) {
+    font-size: 12px;
   }
 }

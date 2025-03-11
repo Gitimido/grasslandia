@@ -6,21 +6,48 @@
 }
 
 .home-container {
-  max-width: 600px;
-  margin: 0 auto;
+  margin-left: 250px; /* Match the sidebar width */
   padding: 24px;
+  animation: fade-in 0.3s ease;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 250px); /* This ensures it takes full remaining width */
+
+  &.sidebar-collapsed {
+    margin-left: 68px; /* Match the collapsed sidebar width */
+    width: calc(100% - 68px); /* Adjust width when sidebar is collapsed */
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   @media (max-width: 768px) {
+    margin-left: 68px;
+    width: calc(100% - 68px);
     padding: 16px;
   }
 }
 
 .create-post-wrapper {
-  margin-bottom: 24px;
+  max-width: 600px;
+  margin: 0 auto 24px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   background-color: white;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
 
   @media (max-width: 768px) {
     margin-bottom: 16px;
@@ -29,6 +56,8 @@
 }
 
 .feed-container {
+  max-width: 600px;
+  margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
 

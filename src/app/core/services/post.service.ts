@@ -5,14 +5,14 @@ import { Post } from '../../models';
 import { Media } from '../../models';
 import { Observable, from, throwError, forkJoin, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
-
+import { AuthService } from './auth.service';
 @Injectable({
   providedIn: 'root',
 })
 export class PostService {
   private supabase: SupabaseClient;
 
-  constructor() {
+  constructor(private authService: AuthService) {
     this.supabase = createClient(
       environment.supabaseUrl,
       environment.supabaseKey
@@ -203,15 +203,27 @@ export class PostService {
       observer.complete();
     });
   }
-
   getHomeFeed(): Observable<Post[]> {
-    return from(
-      this.supabase
-        .from('posts')
-        .select('*, users:user_id(*)')
-        .order('created_at', { ascending: false })
-        .limit(20)
-    ).pipe(
+    // Get the current user ID (if logged in)
+    const currentUserId = this.authService.user?.id;
+
+    // Build the query based on authentication status
+    let query = this.supabase
+      .from('posts')
+      .select('*, users:user_id(*)')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    // If user is logged in, add privacy filter
+    if (currentUserId) {
+      // Show public posts OR user's own posts
+      query = query.or(`privacy_level.eq.public,user_id.eq.${currentUserId}`);
+    } else {
+      // For non-authenticated users, only show public posts
+      query = query.eq('privacy_level', 'public');
+    }
+
+    return from(query).pipe(
       switchMap(({ data, error }) => {
         if (error) throw error;
 

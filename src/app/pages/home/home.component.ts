@@ -1,12 +1,13 @@
 // src/app/pages/home/home.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TopBarComponent } from '../../components/top-bar/top-bar.component';
+import { SideNavComponent } from '../../components/side-nav/side-nav.component';
 import { FeedComponent } from '../../components/feed/feed.component';
 import { CreatePostComponent } from '../../components/create-post/create-post.component';
 import { AuthDebugComponent } from '../../components/auth-debug/auth-debug.component';
 import { FeedStyle } from '../../components/feed/feed-styles.enum';
 import { AuthService } from '../../core/services/auth.service';
+import { SideNavService } from '../../core/services/side-nav.service';
 import { Post } from '../../models';
 
 @Component({
@@ -16,22 +17,33 @@ import { Post } from '../../models';
   standalone: true,
   imports: [
     CommonModule,
-    TopBarComponent,
+    SideNavComponent,
     FeedComponent,
     CreatePostComponent,
     AuthDebugComponent,
   ],
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   // For the feed styling
   feedStyle = FeedStyle.HOME;
+  isSidebarCollapsed = false;
 
   // Track if user is logged in to show/hide create post component
   get isLoggedIn(): boolean {
     return this.authService.isAuthenticated();
   }
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private sideNavService: SideNavService
+  ) {}
+
+  ngOnInit(): void {
+    // Subscribe to sidebar collapse state
+    this.sideNavService.sidebarState.subscribe((isCollapsed) => {
+      this.isSidebarCollapsed = isCollapsed;
+    });
+  }
 
   handlePostCreated(post: Post): void {
     console.log('Post created successfully:', post.id);
