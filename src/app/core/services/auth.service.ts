@@ -18,19 +18,15 @@ export class AuthService {
   private currentUser = new BehaviorSubject<User | null>(null);
   private loading = new BehaviorSubject<boolean>(false);
 
-  // Cookie name to match Supabase's localStorage key
-  private readonly COOKIE_NAME = 'sb-auth-token';
-
   constructor(private router: Router) {
-    // Use default Supabase client
+    // Use default Supabase client with simplified options
     this.supabase = createClient(
       environment.supabaseUrl,
-      environment.supabasePupnon,
+      environment.supabaseKey,
       {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          storageKey: 'supabase-auth',
         },
       }
     );
@@ -67,12 +63,6 @@ export class AuthService {
 
         const user = response.data.user;
         this.currentUser.next(user);
-
-        // Set custom cookie when user signs up
-        if (user) {
-          this.setCookie(user.id);
-        }
-
         return user;
       }),
       catchError((error) => {
@@ -87,21 +77,20 @@ export class AuthService {
 
   signIn(email: string, password: string): Observable<User | null> {
     this.loading.next(true);
+    console.log('Signing in with:', email);
 
     return from(
       this.supabase.auth.signInWithPassword({ email, password })
     ).pipe(
       map((response) => {
-        if (response.error) throw response.error;
+        if (response.error) {
+          console.error('Sign in error response:', response.error);
+          throw response.error;
+        }
 
         const user = response.data.user;
         this.currentUser.next(user);
-
-        // Set custom cookie when user signs in
-        if (user) {
-          this.setCookie(user.id);
-        }
-
+        console.log('Sign in successful, user:', user?.id);
         return user;
       }),
       catchError((error) => {
@@ -116,15 +105,13 @@ export class AuthService {
 
   signOut(): Observable<void> {
     this.loading.next(true);
+    console.log('Signing out...');
 
     return from(this.supabase.auth.signOut()).pipe(
       tap(() => {
         this.currentUser.next(null);
-
-        // Remove custom cookie on sign out
-        this.removeCookie();
-
-        this.router.navigate(['/login']);
+        console.log('Sign out successful');
+        this.router.navigate(['/signin']);
       }),
       map(() => undefined),
       catchError((error) => {
@@ -137,57 +124,31 @@ export class AuthService {
     );
   }
 
-  // Other auth methods remain the same...
-
-  // ----- COOKIE MANAGEMENT (NEW METHODS) -----
-
-  private setCookie(userId: string): void {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 7); // 7 days expiry
-
-    // Set a custom cookie with user ID
-    document.cookie = `${
-      this.COOKIE_NAME
-    }=${userId}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax; ${
-      window.location.protocol === 'https:' ? 'Secure;' : ''
-    }`;
-  }
-
-  private getCookie(): string | null {
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === this.COOKIE_NAME) {
-        return value;
-      }
-    }
-    return null;
-  }
-
-  private removeCookie(): void {
-    document.cookie = `${this.COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-  }
-
   // ----- PRIVATE METHODS -----
 
   private loadUser(): void {
     this.loading.next(true);
+    console.log('Loading user session...');
 
     from(this.supabase.auth.getSession())
       .pipe(
-        tap(({ data }) => {
-          const user = data.session?.user || null;
-          this.currentUser.next(user);
-
-          // Sync cookie with user session
-          if (user) {
-            this.setCookie(user.id);
-          } else {
-            this.removeCookie();
+        tap(({ data, error }) => {
+          if (error) {
+            console.error('Error loading session:', error.message);
+            this.currentUser.next(null);
+            return;
           }
+
+          const user = data.session?.user || null;
+          console.log(
+            'Session loaded:',
+            user ? `User ${user.id} found` : 'No active session'
+          );
+          this.currentUser.next(user);
         }),
         catchError((error) => {
           console.error('Error loading user session:', error.message);
+          this.currentUser.next(null);
           return of(null);
         }),
         finalize(() => {
@@ -202,14 +163,33 @@ export class AuthService {
       console.log('Auth state changed:', event);
       const user = session?.user || null;
       this.currentUser.next(user);
-
-      // Update cookie on auth state change
-      if (user) {
-        this.setCookie(user.id);
-      } else {
-        this.removeCookie();
-      }
     });
+  }
+
+  // Manual refresh method for debugging
+  refreshSession(): Observable<boolean> {
+    console.log('Manually refreshing session...');
+    return from(this.supabase.auth.getSession()).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error refreshing session:', error);
+          this.currentUser.next(null);
+          return false;
+        }
+
+        const user = data.session?.user || null;
+        console.log(
+          'Session refresh result:',
+          user ? `User ${user.id} found` : 'No active session'
+        );
+        this.currentUser.next(user);
+        return !!user;
+      }),
+      catchError((error) => {
+        console.error('Session refresh error:', error);
+        return of(false);
+      })
+    );
   }
 
   /* 

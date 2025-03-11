@@ -1,1 +1,69 @@
-<p>post-card works!</p>
+<div class="post-card">
+    <div class="post-header">
+        <div class="user-info">
+            <img [src]="post.user?.avatarUrl || '/assets/default-avatar.png'" alt="User avatar" class="avatar">
+            <div class="user-details">
+                <a [routerLink]="['/profile', post.userId]" class="username">{{ post.user?.username }}</a>
+                <span class="full-name">{{ post.user?.fullName }}</span>
+                <span class="timestamp">{{ post.timeSince }}</span>
+            </div>
+        </div>
+
+        <button class="options-btn" (click)="toggleActions()" aria-label="Post options">
+            <span class="material-icons">more_horiz</span>
+        </button>
+
+        <div class="action-menu" *ngIf="showActions">
+            <ul>
+                <li *ngIf="isPostOwner">
+                    <button (click)="deletePost()">Delete post</button>
+                </li>
+                <li>
+                    <button (click)="hidePost()">Hide post</button>
+                </li>
+                <li>
+                    <button (click)="toggleSavePost()">
+                        {{ isSaved ? 'Unsave post' : 'Save post' }}
+                    </button>
+                </li>
+                <li>
+                    <button (click)="sharePost()">Share post</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="post-content" *ngIf="post.content">
+        {{ post.content }}
+    </div>
+
+    <!-- Use hasMedia getter and correct media interface -->
+    <app-media-display *ngIf="post.hasMedia" [media]="post.media">
+    </app-media-display>
+
+    <div class="post-actions">
+        <button class="action-btn" aria-label="Like post">
+            <span class="material-icons">
+                {{ post.liked ? 'favorite' : 'favorite_border' }}
+            </span>
+            <span class="action-text">{{ post.likes || 0 }}</span>
+        </button>
+
+        <button class="action-btn" aria-label="Comment on post">
+            <span class="material-icons">chat_bubble_outline</span>
+            <span class="action-text">{{ post.comments?.length || 0 }}</span>
+        </button>
+
+        <button class="action-btn" (click)="toggleSavePost()" aria-label="Save post">
+            <span class="material-icons">
+                {{ isSaved ? 'bookmark' : 'bookmark_border' }}
+            </span>
+            <span class="action-text">{{ isSaved ? 'Saved' : 'Save' }}</span>
+        </button>
+
+        <button class="action-btn" (click)="sharePost()" aria-label="Share post">
+            <span class="material-icons">share</span>
+            <span class="action-text">Share</span>
+        </button>
+    </div>
+</div>

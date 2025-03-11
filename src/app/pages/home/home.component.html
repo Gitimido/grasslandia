@@ -1,10 +1,16 @@
+<!-- src/app/pages/home/home.component.html -->
 <app-top-bar></app-top-bar>
 
 <div class="home-container">
+    <!-- Add the auth debugger only during development -->
+    <app-auth-debug></app-auth-debug>
+
+    <!-- Show create post component only for logged-in users -->
+    <app-create-post *ngIf="isLoggedIn" class="create-post-wrapper"
+        (postCreated)="handlePostCreated($event)"></app-create-post>
+
+    <!-- Feed -->
     <div class="feed-container">
-        <div class="placeholder-content">
-            <h2>Welcome to Grasslandia</h2>
-            <p>Your feed will appear here</p>
-        </div>
+        <app-feed [style]="feedStyle"></app-feed>
     </div>
 </div>

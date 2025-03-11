@@ -1,1 +1,117 @@
-<p>create-post works!</p>
+<div class="create-post-card">
+    <div class="create-post-header">
+        <h2>Create Post</h2>
+    </div>
+
+    <div class="create-post-types">
+        <button class="type-button" [class.active]="selectedPostType === postTypes.TEXT"
+            (click)="setPostType(postTypes.TEXT)">
+            <span class="material-icons">text_fields</span>
+            <span>Text</span>
+        </button>
+        <button class="type-button" [class.active]="selectedPostType === postTypes.PHOTO"
+            (click)="setPostType(postTypes.PHOTO)">
+            <span class="material-icons">photo</span>
+            <span>Photo</span>
+        </button>
+        <button class="type-button" [class.active]="selectedPostType === postTypes.VIDEO"
+            (click)="setPostType(postTypes.VIDEO)">
+            <span class="material-icons">videocam</span>
+            <span>Video</span>
+        </button>
+        <button class="type-button" [class.active]="selectedPostType === postTypes.POLL"
+            (click)="setPostType(postTypes.POLL)">
+            <span class="material-icons">poll</span>
+            <span>Poll</span>
+        </button>
+    </div>
+
+    <div class="create-post-body">
+        <!-- Text input for post content -->
+        <textarea class="post-content-input" [(ngModel)]="postContent" placeholder="What's on your mind?"
+            [disabled]="isSubmitting" rows="3">
+    </textarea>
+
+        <!-- File upload button - only shown for photo/video post types -->
+        <div class="media-upload" *ngIf="selectedPostType === postTypes.PHOTO || selectedPostType === postTypes.VIDEO">
+            <label class="upload-button" [class.disabled]="isSubmitting" *ngIf="selectedFiles.length === 0">
+                <span class="material-icons">{{ selectedPostType === postTypes.PHOTO ? 'add_photo_alternate' :
+                    'video_call' }}</span>
+                <span>{{ selectedPostType === postTypes.PHOTO ? 'Add Photos' : 'Add Video' }}</span>
+                <input type="file" [accept]="selectedPostType === postTypes.PHOTO ? 'image/*' : 'video/*'" multiple
+                    (change)="onFileSelected($event)" [disabled]="isSubmitting" hidden>
+            </label>
+        </div>
+
+        <!-- Media preview area -->
+        <div class="media-preview" *ngIf="selectedFiles.length > 0">
+            <div *ngFor="let file of selectedFiles; let i = index" class="preview-item">
+                <!-- Image preview -->
+                <img *ngIf="file.type.startsWith('image/')" [src]="getFilePreviewUrl(file)" alt="Selected image"
+                    class="media-thumbnail">
+                <!-- Video preview -->
+                <div *ngIf="file.type.startsWith('video/')" class="video-thumbnail">
+                    <span class="material-icons video-icon">videocam</span>
+                    <span class="file-name">{{ file.name }}</span>
+                </div>
+
+                <!-- Remove button -->
+                <button class="remove-file-btn" (click)="removeFile(i)" [disabled]="isSubmitting" title="Remove media">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Poll options - only shown for poll post type -->
+        <div class="poll-options" *ngIf="selectedPostType === postTypes.POLL">
+            <p class="poll-message">Poll creation is coming soon!</p>
+        </div>
+
+        <!-- Error message display -->
+        <div class="error-message" *ngIf="error">
+            {{ error }}
+        </div>
+    </div>
+
+    <div class="create-post-footer">
+        <div class="action-buttons">
+            <!-- Privacy setting dropdown -->
+            <div class="privacy-dropdown">
+                <button class="privacy-button" (click)="togglePrivacyOptions()" [disabled]="isSubmitting">
+                    <span class="material-icons">
+                        {{ privacyLevel === 'public' ? 'public' :
+                        privacyLevel === 'friends' ? 'group' : 'lock' }}
+                    </span>
+                    <span>
+                        {{ privacyLevel === 'public' ? 'Public' :
+                        privacyLevel === 'friends' ? 'Friends' : 'Only Me' }}
+                    </span>
+                    <span class="material-icons dropdown-arrow">arrow_drop_down</span>
+                </button>
+
+                <!-- Privacy options menu -->
+                <div class="privacy-options" *ngIf="showPrivacyOptions">
+                    <button class="option-item" (click)="setPrivacyLevel('public')">
+                        <span class="material-icons">public</span>
+                        <span class="option-text">Public</span>
+                    </button>
+                    <button class="option-item" (click)="setPrivacyLevel('friends')">
+                        <span class="material-icons">group</span>
+                        <span class="option-text">Friends</span>
+                    </button>
+                    <button class="option-item" (click)="setPrivacyLevel('only_me')">
+                        <span class="material-icons">lock</span>
+                        <span class="option-text">Only Me</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post button -->
+        <button class="post-button" [disabled]="isSubmitting || (!postContent.trim() && selectedFiles.length === 0)"
+            (click)="submitPost()">
+            <span *ngIf="!isSubmitting">Post</span>
+            <span *ngIf="isSubmitting">Posting...</span>
+        </button>
+    </div>
+</div>

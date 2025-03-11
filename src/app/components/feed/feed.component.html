@@ -1,1 +1,26 @@
-<p>feed works!</p>
+<!-- src/app/components/feed/feed.component.html -->
+<div class="feed-container" [ngClass]="style">
+    <!-- Loading indicator -->
+    <div *ngIf="isLoading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading posts...</p>
+    </div>
+
+    <!-- Error message -->
+    <div *ngIf="error" class="error-container">
+        <p class="error-message">{{ error }}</p>
+        <button (click)="loadPosts()" class="retry-button">Try Again</button>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!isLoading && !error && posts.length === 0" class="empty-container">
+        <p class="empty-message">No posts to display.</p>
+    </div>
+
+    <!-- Posts list -->
+    <div *ngIf="!isLoading && !error && posts.length > 0" class="posts-list">
+        <app-post-card *ngFor="let post of posts" [post]="post" (deleted)="handlePostDeleted($event)"
+            class="post-card-item">
+        </app-post-card>
+    </div>
+</div>

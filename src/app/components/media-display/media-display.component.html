@@ -1,1 +1,34 @@
-<p>media-display works!</p>
+<div class="media-container" *ngIf="media && media.length > 0">
+    <!-- Main media display -->
+    <div class="media-display">
+        <!-- Navigation arrows for multiple media -->
+        <button *ngIf="hasMultipleMedia" class="nav-btn prev" (click)="prevMedia()" [disabled]="currentIndex === 0">
+            <span class="material-icons">chevron_left</span>
+        </button>
+
+        <!-- Media content - use isImage and isVideo getters -->
+        <ng-container *ngIf="currentMedia">
+            <!-- Image display -->
+            <img *ngIf="currentMedia.isImage" [src]="currentMedia.url" alt="Post image" class="media-image">
+
+            <!-- Video display -->
+            <video *ngIf="currentMedia.isVideo" controls class="media-video">
+                <source [src]="currentMedia.url" type="video/mp4">
+                Your browser does not support video playback.
+            </video>
+        </ng-container>
+
+        <!-- Navigation arrows for multiple media -->
+        <button *ngIf="hasMultipleMedia" class="nav-btn next" (click)="nextMedia()"
+            [disabled]="currentIndex === media.length - 1">
+            <span class="material-icons">chevron_right</span>
+        </button>
+    </div>
+
+    <!-- Pagination indicators for multiple media -->
+    <div class="media-pagination" *ngIf="hasMultipleMedia">
+        <button *ngFor="let item of media; let i = index" class="pagination-dot" [class.active]="i === currentIndex"
+            (click)="goToMedia(i)">
+        </button>
+    </div>
+</div>

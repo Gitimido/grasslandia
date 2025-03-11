@@ -1,0 +1,95 @@
+/* src/app/components/feed/feed.component.scss */
+.feed-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+
+  // Different styles based on feed type - will be useful later
+  &.home {
+    padding: 20px 0;
+  }
+
+  &.profile {
+    padding: 0;
+    max-width: 800px;
+  }
+
+  &.group {
+    padding: 16px;
+    background-color: #fafafa;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4a90e2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #777;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.error-container {
+  background-color: #fdeded;
+  border: 1px solid #f9d7d7;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: center;
+
+  .error-message {
+    color: #e74c3c;
+    margin-bottom: 12px;
+  }
+
+  .retry-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #c0392b;
+    }
+  }
+}
+
+.empty-container {
+  padding: 40px 0;
+  text-align: center;
+  color: #777;
+}
+
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// Specific styles for home feed type
+.home .post-card-item {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
