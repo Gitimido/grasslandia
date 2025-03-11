@@ -1,17 +1,25 @@
 // src/app/core/services/user.service.ts
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environment';
 import { Observable, from, throwError, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { User, IUser } from '../../models';
 import { AuthService } from './auth.service';
+import {
+  selectCurrentUser,
+  setCurrentUser,
+  clearCurrentUser,
+} from '../../core/store/index';
+import { Store } from '@ngrx/store';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService {
   private supabase: SupabaseClient;
+
+  private store = inject(Store);
 
   constructor(private authService: AuthService) {
     this.supabase = createClient(
@@ -40,7 +48,7 @@ export class UserService {
 
         if (!data) return null;
 
-        return new User({
+        let userByUsername: User = new User({
           id: data.id,
           username: data.username,
           email: data.email,
@@ -55,6 +63,9 @@ export class UserService {
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
         } as IUser);
+        this.store.dispatch(setCurrentUser({ user: userByUsername }));
+
+        return userByUsername;
       }),
       catchError((error) => {
         console.error('Error fetching user by username:', error);

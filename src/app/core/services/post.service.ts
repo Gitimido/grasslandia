@@ -1,3 +1,4 @@
+// src/app/core/services/post.service.ts
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environment';
@@ -6,6 +7,7 @@ import { Media } from '../../models';
 import { Observable, from, throwError, forkJoin, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -20,11 +22,18 @@ export class PostService {
   }
 
   /**
+   * TODO: May be important later ( but never use this in iteration as will increae load on database )
+   * TODO: better approach is handle post search by indecies from database itself
    * Get a post by ID
+   *
+   * Used by:
+   * - No direct component usage (potential usage in PostDetailComponent)
+   *
    * @param id Post ID
    * @returns Observable with the post
    */
   getPost(id: string): Observable<Post> {
+    // Makes a single query to fetch a post with its user details
     return from(
       this.supabase
         .from('posts')
@@ -42,10 +51,15 @@ export class PostService {
 
   /**
    * Delete a post
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param id Post ID to delete
    * @returns Observable with success status
    */
   deletePost(id: string): Observable<void> {
+    // Deletes a post by ID from the posts table
     return from(this.supabase.from('posts').delete().eq('id', id)).pipe(
       map(({ error }) => {
         if (error) throw error;
@@ -56,11 +70,16 @@ export class PostService {
 
   /**
    * Hide a post for the current user
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param postId Post ID to hide
    * @param userId Current user ID
    * @returns Observable with success status
    */
   hidePost(postId: string, userId: string): Observable<void> {
+    // Inserts a record into user_hidden_posts to track hidden posts
     return from(
       this.supabase
         .from('user_hidden_posts')
@@ -75,11 +94,16 @@ export class PostService {
 
   /**
    * Save a post for the current user
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param postId Post ID to save
    * @param userId Current user ID
    * @returns Observable with success status
    */
   savePost(postId: string, userId: string): Observable<void> {
+    // Inserts a record into user_saved_posts to bookmark the post
     return from(
       this.supabase
         .from('user_saved_posts')
@@ -94,11 +118,16 @@ export class PostService {
 
   /**
    * Unsave a post for the current user
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param postId Post ID to unsave
    * @param userId Current user ID
    * @returns Observable with success status
    */
   unsavePost(postId: string, userId: string): Observable<void> {
+    // Removes a record from user_saved_posts
     return from(
       this.supabase
         .from('user_saved_posts')
@@ -114,11 +143,16 @@ export class PostService {
 
   /**
    * Unhide a post for the current user
+   *
+   * Used by:
+   * - No direct component usage
+   *
    * @param postId Post ID to unhide
    * @param userId Current user ID
    * @returns Observable with success status
    */
   unhidePost(postId: string, userId: string): Observable<void> {
+    // Removes a record from user_hidden_posts
     return from(
       this.supabase
         .from('user_hidden_posts')
@@ -134,11 +168,16 @@ export class PostService {
 
   /**
    * Check if a post is saved by the current user
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param postId Post ID to check
    * @param userId Current user ID
    * @returns Observable with boolean indicating if post is saved
    */
   isPostSaved(postId: string, userId: string): Observable<boolean> {
+    // Checks if a record exists in user_saved_posts
     return from(
       this.supabase
         .from('user_saved_posts')
@@ -153,7 +192,18 @@ export class PostService {
     );
   }
 
+  /**
+   * Check if a post is hidden by the current user
+   *
+   * Used by:
+   * - No direct component usage
+   *
+   * @param postId Post ID to check
+   * @param userId Current user ID
+   * @returns Observable with boolean indicating if post is hidden
+   */
   isPostHidden(postId: string, userId: string): Observable<boolean> {
+    // Checks if a record exists in user_hidden_posts
     return from(
       this.supabase
         .from('user_hidden_posts')
@@ -170,10 +220,15 @@ export class PostService {
 
   /**
    * Get all saved posts for a user
+   *
+   * Used by:
+   * - No direct component usage (potential usage in Bookmarks page)
+   *
    * @param userId User ID
    * @returns Observable with array of saved posts
    */
   getSavedPosts(userId: string): Observable<Post[]> {
+    // Retrieves all saved posts with a join on the posts table
     return from(
       this.supabase
         .from('user_saved_posts')
@@ -191,18 +246,30 @@ export class PostService {
 
   /**
    * Share a post (generates a shareable link)
+   *
+   * Used by:
+   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
+   *
    * @param postId Post ID to share
    * @returns Observable with shareable link
    */
   sharePost(postId: string): Observable<string> {
-    // This is a simple implementation - you might want to implement
-    // more sophisticated sharing logic based on your requirements
+    // Generates a shareable link with the current domain and post ID
     const shareableLink = `${window.location.origin}/post/${postId}`;
     return new Observable((observer) => {
       observer.next(shareableLink);
       observer.complete();
     });
   }
+
+  /**
+   * Get posts for the home feed
+   *
+   * Used by:
+   * - FeedComponent (src/app/components/feed/feed.component.ts)
+   *
+   * @returns Observable with array of posts
+   */
   getHomeFeed(): Observable<Post[]> {
     // Get the current user ID (if logged in)
     const currentUserId = this.authService.user?.id;
@@ -223,6 +290,7 @@ export class PostService {
       query = query.eq('privacy_level', 'public');
     }
 
+    // First fetch posts, then fetch media for each post using forkJoin
     return from(query).pipe(
       switchMap(({ data, error }) => {
         if (error) throw error;
@@ -265,8 +333,17 @@ export class PostService {
     );
   }
 
-  // Get media for a specific post
+  /**
+   * Get media for a specific post
+   *
+   * Used by:
+   * - Used internally by getHomeFeed and getPostsByUsername
+   *
+   * @param postId Post ID
+   * @returns Observable with array of media items
+   */
   getPostMedia(postId: string): Observable<Media[]> {
+    // Fetches all media attachments for a post, ordered by index
     return from(
       this.supabase
         .from('media')
@@ -301,8 +378,19 @@ export class PostService {
     );
   }
 
-  // Create a post with media attachments
+  /**
+   * TODO: This need to be implemented inside the post inside of diffrenet method
+   * Create a post with attached media
+   *
+   * Used by:
+   * - No direct component usage (legacy method)
+   *
+   * @param post Post object to create
+   * @param mediaItems Media items to attach
+   * @returns Observable with created post
+   */
   createPostWithMedia(post: Post, mediaItems: Media[]): Observable<Post> {
+    // First creates the post, then attaches media items in a transaction-like flow
     return from(
       this.supabase
         .from('posts')
@@ -348,7 +436,17 @@ export class PostService {
     );
   }
 
+  /**
+   * Create a post without media
+   *
+   * Used by:
+   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
+   *
+   * @param post Post object to create
+   * @returns Observable with created post
+   */
   createPost(post: Post): Observable<Post> {
+    // Creates a basic post without media attachments
     return from(
       this.supabase
         .from('posts')
@@ -394,8 +492,19 @@ export class PostService {
       })
     );
   }
-  // Add media to an existing post - with better error handling
+
+  /**
+   * Add media to an existing post
+   *
+   * Used by:
+   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
+   *
+   * @param postId Post ID to add media to
+   * @param mediaItems Media items to add
+   * @returns Observable indicating success
+   */
   addMediaToPost(postId: string, mediaItems: any[]): Observable<void> {
+    // Skip if no media items to add
     if (!mediaItems || mediaItems.length === 0) {
       return of(undefined); // Nothing to do
     }
@@ -408,6 +517,7 @@ export class PostService {
       order_index: media.orderIndex,
     }));
 
+    // Inserts all media items in a single operation
     return from(this.supabase.from('media').insert(mediaInserts)).pipe(
       map(({ error }) => {
         if (error) {
@@ -422,10 +532,20 @@ export class PostService {
     );
   }
 
-  // Upload media file to Supabase storage with better error handling
+  /**
+   * Upload media file to Supabase storage
+   *
+   * Used by:
+   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
+   *
+   * @param file File to upload
+   * @param fileName Name to save the file as
+   * @returns Promise with the public URL of the uploaded file
+   */
   uploadMedia(file: File, fileName: string): Promise<string> {
     const filePath = fileName;
 
+    // Uses the Supabase storage API to upload a file and get its public URL
     return new Promise((resolve, reject) => {
       this.supabase.storage
         .from('post-media') // Make sure this bucket exists in your Supabase project
@@ -453,11 +573,15 @@ export class PostService {
 
   /**
    * Get posts by username for profile page
+   *
+   * Used by:
+   * - ProfileComponent (src/app/pages/profile/profile.component.ts)
+   *
    * @param username The username to fetch posts for
    * @returns Observable with array of posts
    */
-
   getPostsByUsername(username: string): Observable<Post[]> {
+    // First looks up user ID from username, then fetches posts with that user ID
     return from(
       this.supabase.from('users').select('id').eq('username', username).single()
     ).pipe(
@@ -496,7 +620,7 @@ export class PostService {
             })
         );
 
-        // Get media for each post
+        // Get media for each post using forkJoin for parallel requests
         const postWithMediaRequests = posts.map((post: any) =>
           this.getPostMedia(post.id).pipe(
             map((media) => {
