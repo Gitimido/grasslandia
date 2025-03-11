@@ -54,10 +54,28 @@ export class AuthService {
 
   // ----- AUTHENTICATION METHODS (PUBLIC API) -----
 
-  signUp(email: string, password: string): Observable<User | null> {
+  signUp(
+    email: string,
+    password: string,
+    username: string,
+    fullName: string
+  ): Observable<User | null> {
     this.loading.next(true);
 
-    return from(this.supabase.auth.signUp({ email, password })).pipe(
+    const metadata = {
+      username: username,
+      full_name: fullName,
+    };
+
+    return from(
+      this.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata,
+        },
+      })
+    ).pipe(
       map((response) => {
         if (response.error) throw response.error;
 

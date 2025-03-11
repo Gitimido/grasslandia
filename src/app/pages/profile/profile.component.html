@@ -1,1 +1,76 @@
-<p>profile works!</p>
+<!-- src/app/pages/profile/profile.component.html -->
+<app-side-nav></app-side-nav>
+
+<div class="profile-container" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <!-- Loading state -->
+    <div *ngIf="isLoading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading profile...</p>
+    </div>
+
+    <!-- Error state -->
+    <div *ngIf="isError" class="error-container">
+        <p>Sorry, we couldn't load this profile. Please try again later.</p>
+        <button (click)="ngOnInit()" class="retry-button">Retry</button>
+    </div>
+
+    <!-- Profile content -->
+    <div *ngIf="!isLoading && !isError && profile" class="profile-content">
+        <!-- Profile header -->
+        <div class="profile-header">
+            <div class="profile-banner"></div>
+
+            <div class="profile-info">
+                <div class="profile-avatar">
+                    <img [src]="profile.avatarUrl || '/assets/default-avatar.png'" alt="Profile picture">
+                </div>
+
+                <div class="profile-details">
+                    <h1 class="profile-name">{{profile.fullName}}</h1>
+                    <p class="profile-username">{{'@' + profile.username}}</p>
+                    <p *ngIf="profile.bio" class="profile-bio">{{profile.bio}}</p>
+
+                    <!-- Profile stats -->
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">{{posts.length}}</span>
+                            <span class="stat-label">Posts</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile actions -->
+                <div class="profile-actions">
+                    <button *ngIf="isCurrentUser" class="edit-profile-btn" routerLink="/settings">Edit Profile</button>
+                    <button *ngIf="!isCurrentUser" class="follow-btn">Follow</button>
+                    <button *ngIf="!isCurrentUser" class="message-btn">Message</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content tabs -->
+        <div class="profile-tabs">
+            <button class="tab-btn active">Posts</button>
+            <button class="tab-btn">Media</button>
+            <button class="tab-btn">Likes</button>
+        </div>
+
+        <!-- Create post -->
+        <div *ngIf="isCurrentUser" class="create-post-wrapper">
+            <app-create-post (postCreated)="handlePostCreated($event)"></app-create-post>
+        </div>
+
+        <!-- Posts feed -->
+        <div class="posts-feed">
+            <!-- Empty state -->
+            <div *ngIf="posts.length === 0" class="empty-posts">
+                <p>No posts yet</p>
+            </div>
+
+            <!-- Posts list -->
+            <div *ngFor="let post of posts" class="post-card-item">
+                <app-post-card [post]="post"></app-post-card>
+            </div>
+        </div>
+    </div>
+</div>

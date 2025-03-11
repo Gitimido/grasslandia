@@ -450,4 +450,70 @@ export class PostService {
         });
     });
   }
+
+  /**
+   * Get posts by username for profile page
+   * @param username The username to fetch posts for
+   * @returns Observable with array of posts
+   */
+
+  getPostsByUsername(username: string): Observable<Post[]> {
+    return from(
+      this.supabase.from('users').select('id').eq('username', username).single()
+    ).pipe(
+      switchMap(({ data, error }) => {
+        if (error) throw error;
+        if (!data) return of([]); // User not found
+
+        const userId = data.id;
+
+        // Now get posts by this user ID
+        return from(
+          this.supabase
+            .from('posts')
+            .select('*, users:user_id(*)')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+        );
+      }),
+      switchMap((response: any) => {
+        const { data, error } = response;
+        if (error) throw error;
+        if (!data || data.length === 0) return of([]);
+
+        // Create array of posts
+        const posts = data.map(
+          (post: any) =>
+            new Post({
+              id: post.id,
+              userId: post.user_id,
+              content: post.content,
+              privacyLevel: post.privacy_level,
+              groupId: post.group_id,
+              createdAt: new Date(post.created_at),
+              updatedAt: new Date(post.updated_at),
+              user: post.users,
+            })
+        );
+
+        // Get media for each post
+        const postWithMediaRequests = posts.map((post: any) =>
+          this.getPostMedia(post.id).pipe(
+            map((media) => {
+              post.media = media;
+              return post;
+            })
+          )
+        );
+
+        return forkJoin(postWithMediaRequests).pipe(
+          catchError(() => of(posts)) // Return posts without media if media fetch fails
+        );
+      }),
+      catchError((error) => {
+        console.error('Error fetching posts by username:', error);
+        return of([]);
+      })
+    );
+  }
 }

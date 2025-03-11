@@ -48,14 +48,17 @@ export class SignUpComponent {
     return password === confirmPassword ? null : { passwordMismatch: true };
   }
 
+  // src/app/pages/sign-up/sign-up.component.ts
+  // Modify the onSubmit method to send username and fullName
+
   onSubmit(): void {
     if (this.signUpForm.valid) {
       this.isLoading = true;
       this.errorMessage = '';
 
-      const { email, password } = this.signUpForm.value;
+      const { email, password, username, fullName } = this.signUpForm.value;
 
-      this.authService.signUp(email, password).subscribe({
+      this.authService.signUp(email, password, username, fullName).subscribe({
         next: (user) => {
           if (user) {
             this.router.navigate(['/']);
