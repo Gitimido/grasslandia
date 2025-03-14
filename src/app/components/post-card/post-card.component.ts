@@ -1,3 +1,4 @@
+// src/app/components/post-card/post-card.component.ts
 import {
   Component,
   Input,
@@ -12,14 +13,23 @@ import { MediaDisplayComponent } from '../media-display/media-display.component'
 import { PostService } from '../../core/services/post.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RouterModule } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin } from 'rxjs';
 import { Media, IMedia } from '../../models';
+import { LikeService } from '../../core/services/like.service';
+import { CommentService } from '../../core/services/comment.service';
+import { CommentsSectionComponent } from '../comments-section/comments-section.component';
+
 @Component({
   selector: 'app-post-card',
   standalone: true,
-  imports: [CommonModule, MediaDisplayComponent, RouterModule],
+  imports: [
+    CommonModule,
+    MediaDisplayComponent,
+    RouterModule,
+    CommentsSectionComponent,
+  ],
   templateUrl: './post-card.component.html',
-  styleUrl: './post-card.component.scss',
+  styleUrls: ['./post-card.component.scss'],
 })
 export class PostCardComponent implements OnInit, OnDestroy {
   @Input() post!: Post;
@@ -29,29 +39,41 @@ export class PostCardComponent implements OnInit, OnDestroy {
   isHidden = false;
   currentUserId: string | null = null;
   showActions = false;
+  showComments = false; // Controls visibility of comments section
+  isLiked = false;
+  likeCount = 0;
+  commentCount = 0;
   private userSubscription?: Subscription;
 
   constructor(
     private postService: PostService,
-    private authService: AuthService
+    private authService: AuthService,
+    private likeService: LikeService,
+    private commentService: CommentService
   ) {}
 
   ngOnInit(): void {
     // Get current user ID from the AuthService
     this.currentUserId = this.authService.user?.id || null;
+    console.log('Current user ID:', this.currentUserId);
 
     // Subscribe to user changes
     this.userSubscription = this.authService.user$.subscribe((user) => {
       this.currentUserId = user?.id || null;
       if (this.currentUserId && this.post) {
         this.checkSavedStatus();
+        this.checkLikeStatus();
       }
     });
 
     // Initial check if we already have a user
     if (this.currentUserId && this.post) {
       this.checkSavedStatus();
+      this.checkLikeStatus();
     }
+
+    // Get counts
+    this.getCounts();
   }
 
   ngOnDestroy(): void {
@@ -69,6 +91,64 @@ export class PostCardComponent implements OnInit, OnDestroy {
       .subscribe((isSaved) => {
         this.isSaved = isSaved;
       });
+  }
+
+  checkLikeStatus(): void {
+    if (!this.currentUserId) return;
+
+    this.likeService.hasUserLikedPost(this.post.id).subscribe((isLiked) => {
+      this.isLiked = isLiked;
+      console.log('Post liked status:', isLiked);
+    });
+  }
+
+  getCounts(): void {
+    // Use forkJoin to get both counts in parallel
+    forkJoin({
+      likes: this.likeService.getPostLikeCount(this.post.id),
+      comments: this.commentService.getCommentCount(this.post.id),
+    }).subscribe(({ likes, comments }) => {
+      this.likeCount = likes;
+      this.commentCount = comments;
+      console.log(`Post has ${likes} likes and ${comments} comments`);
+    });
+  }
+
+  toggleLike(): void {
+    console.log('Toggle like clicked');
+    if (!this.authService.isAuthenticated()) {
+      console.log('User not authenticated');
+      // Redirect to login or show login modal
+      return;
+    }
+
+    if (this.isLiked) {
+      console.log('Unliking post');
+      this.likeService.unlikePost(this.post.id).subscribe({
+        next: () => {
+          console.log('Unlike successful');
+          this.isLiked = false;
+          this.likeCount--;
+        },
+        error: (err) => console.error('Error unliking post:', err),
+      });
+    } else {
+      console.log('Liking post');
+      this.likeService.likePost(this.post.id).subscribe({
+        next: () => {
+          console.log('Like successful');
+          this.isLiked = true;
+          this.likeCount++;
+        },
+        error: (err) => console.error('Error liking post:', err),
+      });
+    }
+  }
+
+  toggleComments(): void {
+    console.log('Toggle comments clicked, current state:', this.showComments);
+    this.showComments = !this.showComments;
+    console.log('New comments visibility state:', this.showComments);
   }
 
   toggleSavePost(): void {

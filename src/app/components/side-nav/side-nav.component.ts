@@ -16,10 +16,11 @@ import { SearchPopupComponent } from '../search-popup/search-popup.component';
 })
 export class SideNavComponent implements OnInit {
   currentUser: User | null = null;
-  isCollapsed = false;
+  isCollapsed = true; // Start collapsed by default
+  isHovered = false;
   isUserMenuOpen = false;
   isSearchOpen = false;
-  notificationCount = 0; // Sample notification count
+  notificationCount = 0;
 
   constructor(
     private authService: AuthService,
@@ -31,14 +32,27 @@ export class SideNavComponent implements OnInit {
       this.currentUser = user;
     });
 
-    // Subscribe to sidebar state
-    this.sideNavService.sidebarState.subscribe((state) => {
-      this.isCollapsed = state;
-    });
+    // Set initial collapsed state and inform the service
+    this.sideNavService.setSidebarState(this.isCollapsed);
   }
 
-  toggleCollapse(): void {
-    this.isCollapsed = !this.isCollapsed;
+  onMouseEnter(): void {
+    this.isHovered = true;
+    // Only expand if it was collapsed before
+    if (this.isCollapsed) {
+      this.toggleCollapse(false);
+    }
+  }
+
+  onMouseLeave(): void {
+    this.isHovered = false;
+    // Collapse when mouse leaves and close user menu if open
+    this.toggleCollapse(true);
+    this.isUserMenuOpen = false;
+  }
+
+  toggleCollapse(state: boolean): void {
+    this.isCollapsed = state;
     this.sideNavService.setSidebarState(this.isCollapsed);
   }
 

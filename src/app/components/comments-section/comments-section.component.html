@@ -1,0 +1,37 @@
+<!-- src/app/components/comments-section/comments-section.component.html -->
+<div class="comments-section">
+    <div class="comments-header">
+        <h3>Comments</h3>
+    </div>
+
+    <!-- New comment form -->
+    <div class="comment-form" *ngIf="isLoggedIn">
+        <textarea [(ngModel)]="newCommentContent" placeholder="Write a comment..." rows="2"></textarea>
+        <button class="post-comment-btn" [disabled]="!newCommentContent.trim()" (click)="submitComment()">Post</button>
+    </div>
+
+    <div class="login-prompt" *ngIf="!isLoggedIn">
+        <p>Please <a routerLink="/signin">sign in</a> to post a comment.</p>
+    </div>
+
+    <!-- Error message -->
+    <div class="error-message" *ngIf="error">
+        {{ error }}
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <span>Loading comments...</span>
+    </div>
+
+    <!-- Comments list -->
+    <div class="comments-list" *ngIf="!isLoading">
+        <div class="no-comments" *ngIf="comments.length === 0">
+            <p>No comments yet. Be the first to comment!</p>
+        </div>
+
+        <app-comment *ngFor="let comment of comments" [comment]="comment"
+            (deleted)="handleCommentDeleted($event)"></app-comment>
+    </div>
+</div>

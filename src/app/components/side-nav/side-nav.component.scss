@@ -10,12 +10,26 @@
   left: 0;
   top: 0;
   z-index: 100;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, box-shadow 0.3s ease;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 
   &.collapsed {
     width: 68px;
+
+    .user-info {
+      justify-content: center;
+    }
+
+    .user-avatar {
+      margin-right: 0;
+    }
+  }
+
+  &.expanded {
+    width: 250px;
   }
 }
 
@@ -23,8 +37,8 @@
 .logo-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+  justify-content: center;
+  padding: 20px 16px;
   border-bottom: 1px solid #e4e6eb;
   height: 64px;
 }
@@ -36,6 +50,7 @@
   color: #4a90e2;
   font-weight: 700;
   font-size: 20px;
+  letter-spacing: -0.5px;
 
   .logo-icon {
     display: flex;
@@ -49,6 +64,7 @@
     margin-right: 12px;
     font-size: 22px;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(74, 144, 226, 0.3);
 
     &:hover {
       transform: scale(1.05);
@@ -57,24 +73,7 @@
 
   .logo-text {
     transition: opacity 0.3s ease;
-  }
-}
-
-.collapse-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: #65676b;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #f0f2f5;
+    font-weight: 600;
   }
 }
 
@@ -83,6 +82,21 @@
   flex: 1;
   overflow-y: auto;
   padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #ddd;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
 }
 
 .main-nav {
@@ -101,9 +115,15 @@
   margin: 0 8px;
   transition: all 0.2s ease;
   position: relative;
+  font-weight: 500;
 
   &:hover {
     background-color: #f0f2f5;
+    color: #4a90e2;
+
+    .nav-icon {
+      color: #4a90e2;
+    }
   }
 
   &.active {
@@ -123,12 +143,14 @@
     height: 24px;
     margin-right: 12px;
     flex-shrink: 0;
+    transition: color 0.2s ease;
   }
 
   .nav-text {
     font-size: 15px;
     font-weight: 500;
     white-space: nowrap;
+    letter-spacing: -0.2px;
   }
 
   .notification-badge {
@@ -142,6 +164,9 @@
     padding: 2px 6px;
     font-size: 12px;
     font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -160,9 +185,15 @@ button.nav-item {
   cursor: pointer;
   text-align: left;
   width: calc(100% - 16px);
+  font-weight: 500;
 
   &:hover {
     background-color: #f0f2f5;
+    color: #4a90e2;
+
+    .nav-icon {
+      color: #4a90e2;
+    }
   }
 
   &:active {
@@ -190,11 +221,13 @@ button.nav-item {
   font-size: 15px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(74, 144, 226, 0.3);
+  letter-spacing: -0.3px;
 
   &:hover {
     background-color: #3a7bc8;
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 
   &:active {
@@ -229,17 +262,23 @@ button.nav-item {
   text-decoration: none;
   border-radius: 8px;
   transition: all 0.2s ease;
+  font-weight: 500;
+  letter-spacing: -0.2px;
 
   &:hover {
     background-color: #e4e6eb;
+    transform: translateY(-1px);
   }
 
   &.signup {
     background-color: #4a90e2;
     color: white;
+    box-shadow: 0 2px 5px rgba(74, 144, 226, 0.3);
 
     &:hover {
       background-color: #3a7bc8;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
     }
   }
 
@@ -285,15 +324,16 @@ button.nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: #e4e6eb;
-  color: #65676b;
+  width: 38px;
+  height: 38px;
+  background-color: #4a90e2;
+  color: white;
   border-radius: 50%;
   font-weight: 600;
   font-size: 16px;
   margin-right: 10px;
   flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(74, 144, 226, 0.3);
 }
 
 .user-details {
@@ -308,6 +348,7 @@ button.nav-item {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.2px;
 }
 
 .user-email {
@@ -360,6 +401,7 @@ button.nav-item {
   color: #050505;
   font-size: 14px;
   transition: background-color 0.2s ease;
+  letter-spacing: -0.2px;
 
   &:hover {
     background-color: #f0f2f5;
@@ -373,6 +415,7 @@ button.nav-item {
     text-align: left;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
   }
 
   .menu-icon {
@@ -395,42 +438,12 @@ button.nav-item {
   .sidebar {
     width: 68px;
 
-    .logo-text,
-    .nav-text,
-    .user-details,
-    .user-menu-toggle,
-    .btn-text,
-    .auth-text {
-      display: none;
-    }
-
-    .user-info {
-      justify-content: center;
-    }
-
-    .user-avatar {
-      margin-right: 0;
-    }
-
     &.expanded {
       width: 250px;
+    }
 
-      .logo-text,
-      .nav-text,
-      .user-details,
-      .user-menu-toggle,
-      .btn-text,
-      .auth-text {
-        display: block;
-      }
-
-      .user-info {
-        justify-content: flex-start;
-      }
-
-      .user-avatar {
-        margin-right: 10px;
-      }
+    &.collapsed {
+      width: 68px;
     }
   }
 }

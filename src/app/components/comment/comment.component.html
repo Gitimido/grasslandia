@@ -1,0 +1,82 @@
+<!-- src/app/components/comment/comment.component.html -->
+<div class="comment-container" [class.is-reply]="isReply">
+    <div class="comment-header">
+        <div class="user-info">
+            <img [src]="comment.user?.avatarUrl || '/assets/default-avatar.png'" [alt]="getUserDisplayName()"
+                class="avatar">
+            <div class="user-details">
+                <a [routerLink]="['/profile', comment.user?.username]" class="username">{{ getUserDisplayName() }}</a>
+                <span class="timestamp">{{ comment.timeSince }}</span>
+            </div>
+        </div>
+
+        <div class="comment-actions" *ngIf="isCommentOwner">
+            <button class="action-btn" (click)="toggleEditMode()" *ngIf="!isEditing" title="Edit comment">
+                <span class="material-icons">edit</span>
+            </button>
+            <button class="action-btn" (click)="deleteComment()" title="Delete comment">
+                <span class="material-icons">delete</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="comment-body">
+        <!-- Display mode -->
+        <div class="comment-content" *ngIf="!isEditing">
+            {{ comment.content }}
+        </div>
+
+        <!-- Edit mode -->
+        <div class="edit-form" *ngIf="isEditing">
+            <textarea [(ngModel)]="editContent" placeholder="Edit your comment" rows="3"></textarea>
+            <div class="edit-actions">
+                <button class="save-btn" (click)="saveEdit()">Save</button>
+                <button class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="comment-footer">
+        <!-- Voting controls -->
+        <div class="voting-controls">
+            <button class="vote-btn upvote" [class.active]="comment.userVote === 'upvote'"
+                (click)="handleVote('upvote')" title="Upvote">
+                <span class="material-icons">arrow_upward</span>
+            </button>
+            <span class="vote-score" [class.positive]="comment.score > 0" [class.negative]="comment.score < 0">
+                {{ comment.score }}
+            </span>
+            <button class="vote-btn downvote" [class.active]="comment.userVote === 'downvote'"
+                (click)="handleVote('downvote')" title="Downvote">
+                <span class="material-icons">arrow_downward</span>
+            </button>
+        </div>
+
+        <!-- Like button -->
+        <button class="action-btn" (click)="toggleLike()" [class.liked]="isLiked">
+            <span class="material-icons">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
+            <span class="count">{{ likeCount > 0 ? likeCount : '' }}</span>
+        </button>
+
+        <!-- Reply button -->
+        <button class="action-btn" (click)="toggleReplyForm()" *ngIf="!isReply">
+            <span class="material-icons">reply</span>
+            <span>Reply</span>
+        </button>
+    </div>
+
+    <!-- Reply form -->
+    <div class="reply-form" *ngIf="showReplyForm">
+        <textarea [(ngModel)]="replyContent" placeholder="Write a reply..." rows="2"></textarea>
+        <div class="reply-actions">
+            <button class="cancel-btn" (click)="toggleReplyForm()">Cancel</button>
+            <button class="reply-btn" (click)="submitReply()" [disabled]="!replyContent.trim()">Reply</button>
+        </div>
+    </div>
+
+    <!-- Replies -->
+    <div class="replies" *ngIf="comment.replies && comment.replies.length > 0">
+        <app-comment *ngFor="let reply of comment.replies" [comment]="reply" [isReply]="true"
+            (deleted)="handleCommentDeleted($event)"></app-comment>
+    </div>
+</div>

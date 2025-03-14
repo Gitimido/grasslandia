@@ -1,6 +1,18 @@
 // src/app/models/comment.model.ts
 
-import { IUser } from './user.model';
+export enum VoteType {
+  UPVOTE = 'upvote',
+  DOWNVOTE = 'downvote',
+}
+// In src/app/models/comment.model.ts
+// Add this interface to represent a simplified user for comments
+export interface ICommentUser {
+  id: string;
+  username: string;
+  fullName: string;
+  avatarUrl?: string;
+  email?: string;
+}
 
 export interface IComment {
   id: string;
@@ -11,10 +23,17 @@ export interface IComment {
   createdAt: Date;
   updatedAt: Date;
 
-  // Expanded properties
-  user?: IUser;
+  // Change user type to ICommentUser
+  user?: ICommentUser;
   likes?: number;
   liked?: boolean;
+  replies?: IComment[];
+
+  // Voting properties
+  upvotes?: number;
+  downvotes?: number;
+  score?: number;
+  userVote?: VoteType | null;
 }
 
 export class Comment implements IComment {
@@ -26,10 +45,17 @@ export class Comment implements IComment {
   createdAt: Date;
   updatedAt: Date;
 
-  // Expanded properties
-  user?: IUser;
+  // Use ICommentUser interface
+  user?: ICommentUser;
   likes?: number;
   liked?: boolean;
+  replies?: Comment[];
+
+  // Voting properties
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  userVote?: VoteType | null;
 
   constructor(comment: IComment) {
     this.id = comment.id;
@@ -39,13 +65,29 @@ export class Comment implements IComment {
     this.content = comment.content;
     this.createdAt = comment.createdAt;
     this.updatedAt = comment.updatedAt;
+
+    // Copy user object as-is
     this.user = comment.user;
+
     this.likes = comment.likes || 0;
     this.liked = comment.liked || false;
+
+    // Handle replies properly by converting from IComment to Comment
+    this.replies = comment.replies
+      ? comment.replies.map((reply) =>
+          reply instanceof Comment ? reply : new Comment(reply)
+        )
+      : [];
+
+    // Initialize voting properties
+    this.upvotes = comment.upvotes || 0;
+    this.downvotes = comment.downvotes || 0;
+    this.score = comment.score || 0;
+    this.userVote = comment.userVote || null;
   }
 
   get timeSince(): string {
-    // Logic to calculate time since comment was created (same as post)
+    // Logic to calculate time since comment was created
     const now = new Date();
     const seconds = Math.floor(
       (now.getTime() - this.createdAt.getTime()) / 1000

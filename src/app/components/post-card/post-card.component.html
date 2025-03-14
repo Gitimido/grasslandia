@@ -1,11 +1,15 @@
+<!-- src/app/components/post-card/post-card.component.html -->
 <div class="post-card">
     <div class="post-header">
         <div class="user-info">
             <img [src]="post.user?.avatarUrl || '/assets/default-avatar.png'" alt="User avatar" class="avatar">
             <div class="user-details">
-                <a [routerLink]="['/profile', post.userId]" class="username">{{ post.user?.username }}</a>
-                <span class="full-name">{{ post.user?.fullName }}</span>
-                <span class="timestamp">{{ post.timeSince }}</span>
+                <a [routerLink]="['/profile', post.user?.username]" class="username">{{ post.user?.username }}</a>
+                <div class="metadata">
+                    <span class="full-name">{{ post.user?.fullName }}</span>
+                    <span class="dot">•</span>
+                    <span class="timestamp">{{ post.timeSince }}</span>
+                </div>
             </div>
         </div>
 
@@ -16,18 +20,28 @@
         <div class="action-menu" *ngIf="showActions">
             <ul>
                 <li *ngIf="isPostOwner">
-                    <button (click)="deletePost()">Delete post</button>
+                    <button (click)="deletePost()">
+                        <span class="material-icons">delete</span>
+                        Delete post
+                    </button>
                 </li>
                 <li>
-                    <button (click)="hidePost()">Hide post</button>
+                    <button (click)="hidePost()">
+                        <span class="material-icons">visibility_off</span>
+                        Hide post
+                    </button>
                 </li>
                 <li>
                     <button (click)="toggleSavePost()">
+                        <span class="material-icons">{{ isSaved ? 'bookmark' : 'bookmark_border' }}</span>
                         {{ isSaved ? 'Unsave post' : 'Save post' }}
                     </button>
                 </li>
                 <li>
-                    <button (click)="sharePost()">Share post</button>
+                    <button (click)="sharePost()">
+                        <span class="material-icons">share</span>
+                        Share post
+                    </button>
                 </li>
             </ul>
         </div>
@@ -41,29 +55,44 @@
     <app-media-display *ngIf="post.hasMedia" [media]="post.media">
     </app-media-display>
 
+    <div class="post-stats" *ngIf="likeCount > 0 || commentCount > 0">
+        <div class="like-stats" *ngIf="likeCount > 0">
+            <span class="material-icons like-icon">favorite</span>
+            <span>{{ likeCount }}</span>
+        </div>
+        <div class="comment-stats" *ngIf="commentCount > 0" (click)="toggleComments()">
+            <span>{{ commentCount }} {{ commentCount === 1 ? 'comment' : 'comments' }}</span>
+        </div>
+    </div>
+
     <div class="post-actions">
-        <button class="action-btn" aria-label="Like post">
+        <button class="action-btn" [class.liked]="isLiked" (click)="toggleLike()" aria-label="Like post">
             <span class="material-icons">
-                {{ post.liked ? 'favorite' : 'favorite_border' }}
+                {{ isLiked ? 'favorite' : 'favorite_border' }}
             </span>
-            <span class="action-text">{{ post.likes || 0 }}</span>
+            <span class="action-text">Like</span>
         </button>
 
-        <button class="action-btn" aria-label="Comment on post">
+        <button class="action-btn" (click)="toggleComments()" aria-label="Comment on post">
             <span class="material-icons">chat_bubble_outline</span>
-            <span class="action-text">{{ post.comments?.length || 0 }}</span>
+            <span class="action-text">Comment</span>
         </button>
 
-        <button class="action-btn" (click)="toggleSavePost()" aria-label="Save post">
+        <button class="action-btn" [class.saved]="isSaved" (click)="toggleSavePost()" aria-label="Save post">
             <span class="material-icons">
                 {{ isSaved ? 'bookmark' : 'bookmark_border' }}
             </span>
-            <span class="action-text">{{ isSaved ? 'Saved' : 'Save' }}</span>
+            <span class="action-text">Save</span>
         </button>
 
         <button class="action-btn" (click)="sharePost()" aria-label="Share post">
             <span class="material-icons">share</span>
             <span class="action-text">Share</span>
         </button>
+    </div>
+
+    <!-- Comments section (conditionally displayed) -->
+    <div *ngIf="showComments" class="post-comments">
+        <app-comments-section [postId]="post.id"></app-comments-section>
     </div>
 </div>

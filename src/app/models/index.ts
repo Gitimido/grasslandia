@@ -5,3 +5,4 @@ export * from './post.model';
 export * from './comment.model';
 export * from './media.model';
 export * from './notification.model';
+export * from './comment.model';

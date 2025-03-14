@@ -1,1 +1,26 @@
-<p>post-detail works!</p>
+<!-- src/app/pages/post-detail/post-detail.component.html -->
+<app-side-nav></app-side-nav>
+
+<div class="post-detail-container" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <div class="post-detail-content">
+        <!-- Loading state -->
+        <div *ngIf="isLoading" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Loading post...</p>
+        </div>
+
+        <!-- Error state -->
+        <div *ngIf="error" class="error-container">
+            <div class="error-message">{{ error }}</div>
+            <button routerLink="/" class="back-button">Back to Home</button>
+        </div>
+
+        <!-- Post content -->
+        <div *ngIf="!isLoading && !error && post" class="post-wrapper">
+            <app-post-card [post]="post" (deleted)="handlePostDeleted()"></app-post-card>
+
+            <!-- Comments section -->
+            <app-comments-section [postId]="post.id"></app-comments-section>
+        </div>
+    </div>
+</div>

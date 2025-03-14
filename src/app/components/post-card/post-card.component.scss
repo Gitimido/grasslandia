@@ -233,3 +233,32 @@
     }
   }
 }
+/* Add this to src/app/components/post-card/post-card.component.scss */
+
+.post-comments {
+  border-top: 1px solid #eee;
+  margin-top: 8px;
+  padding-top: 16px;
+  animation: slide-down 0.3s ease;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Make the comment stats clickable */
+.comment-stats {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+    color: #4a90e2;
+  }
+}
