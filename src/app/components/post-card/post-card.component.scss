@@ -1,21 +1,22 @@
+/* src/app/components/post-card/post-card.component.scss */
 .post-card {
   background-color: #fff;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
   overflow: hidden;
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease;
 
   &:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
 }
 
 .post-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 16px;
+  align-items: center;
+  padding: 12px 16px;
   position: relative;
 }
 
@@ -25,12 +26,11 @@
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   margin-right: 12px;
   object-fit: cover;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .user-details {
@@ -40,225 +40,175 @@
 
 .username {
   font-weight: 600;
-  font-size: 16px;
-  color: #333;
+  font-size: 15px;
+  color: #262626;
   text-decoration: none;
 
   &:hover {
     text-decoration: underline;
-    color: #0066cc;
   }
 }
 
-.full-name {
-  font-size: 14px;
-  color: #666;
+.metadata {
+  display: flex;
+  align-items: center;
   margin-top: 2px;
 }
 
 .timestamp {
-  font-size: 12px;
-  color: #888;
-  margin-top: 2px;
+  font-size: 13px;
+  color: #8e8e8e;
 }
 
 .options-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 8px;
   border-radius: 50%;
+  height: 36px;
+  width: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f0f0f0;
-  }
-
-  &:active {
-    background-color: #e0e0e0;
+    background-color: #f0f2f5;
   }
 
   .material-icons {
+    color: #606770;
     font-size: 20px;
-    color: #666;
   }
 }
 
 .action-menu {
   position: absolute;
   top: 48px;
-  right: 16px;
+  right: 8px;
   background-color: #fff;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
   z-index: 10;
-  min-width: 180px;
+  width: 200px;
   overflow: hidden;
 
   ul {
     list-style: none;
-    padding: 0;
+    padding: 8px 0;
     margin: 0;
   }
 
-  li {
-    button {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 12px 16px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-      color: #333;
-      transition: background-color 0.2s ease;
+  li button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: #262626;
 
-      &:hover {
-        background-color: #f5f5f5;
-      }
+    &:hover {
+      background-color: #f5f5f5;
+    }
 
-      &:active {
-        background-color: #e8e8e8;
-      }
+    .material-icons {
+      margin-right: 12px;
+      font-size: 18px;
+      color: #606770;
     }
   }
 }
 
 .post-content {
-  padding: 0 16px 16px;
-  font-size: 16px;
-  line-height: 1.6;
+  padding: 0 16px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1c1e21;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #333;
+}
+
+.post-stats {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #efefef;
+  font-size: 14px;
+  color: #65676b;
+
+  .like-stats {
+    display: flex;
+    align-items: center;
+
+    .like-icon {
+      font-size: 16px;
+      color: #ed4956;
+      margin-right: 4px;
+    }
+  }
+
+  .comment-stats {
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 .post-actions {
   display: flex;
-  border-top: 1px solid #eee;
-  padding: 8px;
+  border-top: 1px solid #efefef;
+  padding: 4px;
 }
 
 .action-btn {
   flex: 1;
   background: none;
   border: none;
-  padding: 10px 8px;
+  padding: 8px 0;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  color: #666;
+  justify-content: center;
+  color: #65676b;
   font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s;
   border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  margin: 0 4px;
 
   &:hover {
-    background-color: #f0f0f0;
-    color: #0066cc;
+    background-color: #f0f2f5;
+  }
+
+  &.active {
+    color: #1876f2;
 
     .material-icons {
-      color: #0066cc;
+      color: #1876f2;
     }
   }
 
-  &:active {
-    background-color: #e5e5e5;
-  }
-
-  .material-icons {
-    font-size: 22px;
-    margin-bottom: 4px;
-    transition: color 0.2s ease;
-  }
-
-  .action-text {
-    font-size: 12px;
-    font-weight: 500;
-  }
-}
-
-// Special styling for liked state
-.action-btn.liked {
-  color: #e53935;
-
-  .material-icons {
-    color: #e53935;
-  }
-}
-
-// Special styling for saved state
-.action-btn.saved {
-  color: #4caf50;
-
-  .material-icons {
-    color: #4caf50;
-  }
-}
-
-// Responsive adaptations
-@media (max-width: 768px) {
-  .post-card {
-    border-radius: 8px;
-    margin-bottom: 16px;
-  }
-
-  .post-header {
-    padding: 12px;
-  }
-
-  .avatar {
-    width: 40px;
-    height: 40px;
-  }
-
-  .post-content {
-    padding: 0 12px 12px;
-    font-size: 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  .action-btn {
-    .action-text {
-      font-size: 11px;
-    }
+  &:first-child.active {
+    color: #ed4956;
 
     .material-icons {
-      font-size: 20px;
+      color: #ed4956;
     }
   }
+
+  .material-icons {
+    font-size: 20px;
+    margin-right: 4px;
+  }
 }
-/* Add this to src/app/components/post-card/post-card.component.scss */
 
 .post-comments {
-  border-top: 1px solid #eee;
-  margin-top: 8px;
-  padding-top: 16px;
-  animation: slide-down 0.3s ease;
-}
-
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Make the comment stats clickable */
-.comment-stats {
-  cursor: pointer;
-
-  &:hover {
-    text-decoration: underline;
-    color: #4a90e2;
-  }
+  border-top: 1px solid #efefef;
+  padding-top: 12px;
 }

@@ -1,16 +1,23 @@
 /* src/app/components/comment/comment.component.scss */
 .comment-container {
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 12px;
   margin-bottom: 12px;
+  position: relative;
 
   &.is-reply {
-    margin-left: 24px;
-    background-color: #f9fafb;
-    border-left: 3px solid #e5e7eb;
-    box-shadow: none;
+    margin-left: 36px;
+    border-left: 2px solid #efefef;
+    padding-left: 16px;
+
+    &:before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #efefef;
+    }
   }
 }
 
@@ -26,156 +33,704 @@
   align-items: center;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-right: 8px;
-  object-fit: cover;
-}
-
-.user-details {
+.username-container {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .username {
   font-weight: 600;
   font-size: 14px;
-  color: #333;
+  color: #262626;
   text-decoration: none;
+  position: relative;
+  display: inline-block;
 
   &:hover {
     text-decoration: underline;
-    color: #4a90e2;
+
+    .profile-hover-card {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
+}
+
+/* Profile hover card */
+.profile-hover-card {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  transform: translateY(-8px) scale(0.95);
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 100;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  pointer-events: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 12px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid white;
+  }
+}
+
+.hover-card-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 12px;
+  width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.hover-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 2px solid #f0f2f5;
+}
+
+.hover-user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hover-username {
+  font-weight: 600;
+  font-size: 15px;
+  color: #262626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-email {
+  font-size: 13px;
+  color: #65676b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 .timestamp {
   font-size: 12px;
-  color: #6b7280;
+  color: #8e8e8e;
+  margin-top: 2px;
 }
 
 .comment-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .action-btn {
-  display: flex;
-  align-items: center;
   background: none;
   border: none;
-  color: #6b7280;
-  font-size: 12px;
   padding: 4px;
-  cursor: pointer;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  color: #65676b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
 
   &:hover {
-    background-color: #f3f4f6;
-    color: #4a90e2;
+    background-color: #f0f2f5;
   }
 
   &.liked {
-    color: #e53935;
+    color: #ed4956;
   }
 
   .material-icons {
     font-size: 16px;
-    margin-right: 4px;
   }
 
-  .count {
-    margin-left: 2px;
+  .like-count {
+    font-size: 12px;
+    margin-left: 4px;
   }
 }
 
 .comment-body {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .comment-content {
   font-size: 14px;
-  line-height: 1.5;
-  color: #333;
-  white-space: pre-wrap;
+  line-height: 1.4;
+  color: #1c1e21;
   word-break: break-word;
+  margin-left: 0; /* Adjust this since we removed the avatar */
 }
 
 .comment-footer {
   display: flex;
+  align-items: center;
   gap: 16px;
   margin-top: 8px;
+}
+
+.voting-controls {
+  display: flex;
+  align-items: center;
+  background-color: #f0f2f5;
+  border-radius: 16px;
+  padding: 2px 4px;
+
+  .vote-btn {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    &.active {
+      &.upvote {
+        color: #4caf50;
+      }
+
+      &.downvote {
+        color: #f44336;
+      }
+    }
+
+    .material-icons {
+      font-size: 16px;
+    }
+  }
+
+  .vote-count {
+    margin: 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+
+    &.positive {
+      color: #4caf50;
+    }
+
+    &.negative {
+      color: #f44336;
+    }
+  }
+}
+
+.reply-btn {
+  background: none;
+  border: none;
+  color: #65676b;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+
+  &:hover {
+    background-color: #f0f2f5;
+  }
+
+  .material-icons {
+    font-size: 14px;
+    margin-right: 4px;
+  }
 }
 
 .edit-form,
 .reply-form {
   margin-top: 8px;
+  margin-bottom: 12px;
 
   textarea {
     width: 100%;
+    padding: 10px;
+    border: 1px solid #dddfe2;
+    border-radius: 8px;
     resize: vertical;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    padding: 8px;
     font-size: 14px;
-    font-family: inherit;
 
     &:focus {
       outline: none;
-      border-color: #4a90e2;
-      box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+      border-color: #1876f2;
+      box-shadow: 0 0 0 2px rgba(24, 118, 242, 0.2);
     }
   }
-}
 
-.edit-actions,
-.reply-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.save-btn,
-.reply-btn {
-  background-color: #4a90e2;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #3a7bc8;
+  .edit-actions,
+  .reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
   }
 
-  &:disabled {
-    background-color: #a4c6e8;
-    cursor: not-allowed;
+  .cancel-btn,
+  .save-btn,
+  .submit-btn {
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
   }
-}
 
-.cancel-btn {
-  background-color: #f3f4f6;
-  color: #4b5563;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  .cancel-btn {
+    background-color: #f0f2f5;
+    color: #65676b;
 
-  &:hover {
-    background-color: #e5e7eb;
+    &:hover {
+      background-color: #dddfe2;
+    }
+  }
+
+  .save-btn,
+  .submit-btn {
+    background-color: #1876f2;
+    color: white;
+
+    &:hover {
+      background-color: #166fe5;
+    }
+
+    &:disabled {
+      background-color: #9cb4d8;
+      cursor: not-allowed;
+    }
   }
 }
 
 .replies {
   margin-top: 12px;
-  padding-left: 8px;
+}
+.comment-container {
+  padding: 12px;
+  margin-bottom: 12px;
+  position: relative;
+
+  &.is-reply {
+    margin-left: 24px;
+    border-left: 2px solid #efefef;
+    padding-left: 16px;
+
+    &:before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #efefef;
+    }
+  }
+
+  /* Deeper nesting levels with different colors */
+  &.level-2 {
+    border-left-color: #dfe3ee;
+
+    &:before {
+      background-color: #dfe3ee;
+    }
+  }
+
+  &.level-3 {
+    border-left-color: #c8d1e6;
+
+    &:before {
+      background-color: #c8d1e6;
+    }
+  }
+
+  &.level-4,
+  &.level-5,
+  &.level-6 {
+    border-left-color: #b0c4de;
+
+    &:before {
+      background-color: #b0c4de;
+    }
+  }
+}
+
+/* Style for "replying to" indicator */
+.replying-to {
+  font-size: 12px;
+  color: #65676b;
+  margin-bottom: 4px;
+
+  a {
+    color: #1876f2;
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+/* Adjust reply form to account for nesting */
+.reply-form {
+  margin-left: 0;
+  width: calc(100% - 8px);
+}
+
+/* Make sure nested replies don't get too narrow on deep levels */
+.replies {
+  margin-top: 12px;
+  max-width: 100%;
+
+  .comment-container {
+    /* After 6 levels, don't indent anymore to prevent content from getting too narrow */
+    &.level-6,
+    &.level-7,
+    &.level-8,
+    &.level-9,
+    &.level-10 {
+      margin-left: 12px;
+    }
+  }
+}
+.comment-container {
+  padding: 12px;
+  margin-bottom: 12px;
+  position: relative;
+
+  &.is-reply {
+    margin-left: 24px;
+    border-left: 2px solid #efefef;
+    padding-left: 16px;
+
+    &:before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #efefef;
+    }
+  }
+}
+
+/* Deeper nesting levels with different colors */
+/* Removed empty .level-1 ruleset as it was unnecessary */
+
+.level-2 {
+  border-left-color: #dfe3ee !important;
+
+  &:before {
+    background-color: #31457c !important;
+  }
+}
+
+.level-3 {
+  border-left-color: #c8d1e6 !important;
+
+  &:before {
+    background-color: #c8d1e6 !important;
+  }
+}
+
+.level-4,
+.level-5,
+.level-6 {
+  border-left-color: #b0c4de !important;
+
+  &:before {
+    background-color: #b0c4de !important;
+  }
+}
+
+/* Style for "replying to" indicator */
+.replying-to {
+  font-size: 12px;
+  color: #65676b;
+  margin-bottom: 4px;
+
+  a {
+    color: #1876f2;
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+/* Adjust indentation for very deep nesting levels */
+.level-6,
+.level-7,
+.level-8,
+.level-9,
+.level-10 {
+  margin-left: 12px !important;
+}
+
+/* Profile hover card styling */
+.username-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.username {
+  font-weight: 600;
+  font-size: 14px;
+  color: #262626;
+  text-decoration: none;
+  position: relative;
+  display: inline-block;
+
+  &:hover {
+    text-decoration: underline;
+
+    .profile-hover-card {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+.profile-hover-card {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  transform: translateY(-8px) scale(0.95);
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 100;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  pointer-events: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 12px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid white;
+  }
+}
+
+.hover-card-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 12px;
+  width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.hover-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 2px solid #f0f2f5;
+}
+
+.hover-user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hover-username {
+  font-weight: 600;
+  font-size: 15px;
+  color: #262626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-email {
+  font-size: 13px;
+  color: #65676b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Add to src/app/components/comment/comment.component.scss */
+
+/* View replies button */
+.replies-btn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #65676b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+
+  &:hover {
+    background-color: #f0f2f5;
+    color: #1876f2;
+  }
+
+  .material-icons {
+    font-size: 18px;
+    margin-right: 4px;
+  }
+}
+
+/* Loading indicators */
+.loading-replies {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f0f2f5;
+    border-top: 2px solid #1876f2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  span {
+    font-size: 13px;
+    color: #65676b;
+  }
+}
+
+/* Load more button */
+.load-more-container {
+  text-align: center;
+  padding: 8px 0;
+
+  .load-more-btn {
+    background: none;
+    border: none;
+    color: #1876f2;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #e7f3ff;
+    }
+
+    &:disabled {
+      color: #8c8c8c;
+      cursor: not-allowed;
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Add to src/app/components/comments-section/comments-section.component.scss */
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #262626;
+    margin: 0;
+  }
+}
+
+.comments-sort {
+  display: flex;
+  gap: 8px;
+
+  .sort-btn {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: #65676b;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #f0f2f5;
+    }
+
+    &.active {
+      color: #1876f2;
+      font-weight: 500;
+    }
+  }
+}
+
+.load-more-container {
+  text-align: center;
+  padding: 16px 0;
+
+  .load-more-btn {
+    background-color: #f0f2f5;
+    color: #1876f2;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #e7f3ff;
+    }
+
+    &:disabled {
+      color: #8c8c8c;
+      background-color: #f0f2f5;
+      cursor: not-allowed;
+    }
+  }
 }

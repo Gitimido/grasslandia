@@ -18,9 +18,17 @@ export class CommentsSectionComponent implements OnInit {
   @Input() postId!: string;
 
   comments: Comment[] = [];
+  visibleComments: Comment[] = [];
   newCommentContent: string = '';
   isLoading = true;
+  isLoadingMore = false;
   error: string | null = null;
+
+  // Pagination and sorting
+  offset = 0;
+  limit = 5; // Initially show top 5 comments
+  hasMoreComments = false;
+  sortBy: 'top' | 'recent' = 'top'; // Default sort by top comments
 
   constructor(
     private commentService: CommentService,
@@ -28,15 +36,7 @@ export class CommentsSectionComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    console.log('Comments section initialized for post:', this.postId);
-
-    // Check authentication status
-    const user = this.authService.user;
-    console.log(
-      'Current auth user:',
-      user ? `${user.id} (${user.email})` : 'Not authenticated'
-    );
-
+    this.setSortBy('recent');
     this.loadComments();
   }
 
@@ -44,28 +44,84 @@ export class CommentsSectionComponent implements OnInit {
     return this.authService.isAuthenticated();
   }
 
+  // Method for textarea auto-grow
+  autoGrow(element: HTMLTextAreaElement): void {
+    element.style.height = 'auto';
+    element.style.height = element.scrollHeight + 'px';
+  }
+
+  // Set sort method and reload comments
+  setSortBy(sort: 'top' | 'recent'): void {
+    if (this.sortBy !== sort) {
+      this.sortBy = sort;
+      this.offset = 0;
+      this.visibleComments = [];
+      this.loadComments();
+    }
+  }
+
   loadComments(): void {
     this.isLoading = true;
     this.error = null;
 
-    this.commentService.getPostComments(this.postId).subscribe({
-      next: (comments) => {
-        this.comments = comments;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading comments:', err);
-        this.error = 'Failed to load comments. Please try again.';
-        this.isLoading = false;
-      },
-    });
+    this.commentService
+      .getPostComments(this.postId, this.limit, this.offset, this.sortBy)
+      .subscribe({
+        next: (comments) => {
+          this.visibleComments = comments;
+
+          // Check if there are more comments to load
+          this.hasMoreComments = comments.length >= this.limit;
+
+          // Update offset for next page
+          this.offset = comments.length;
+
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Error loading comments:', err);
+          this.error = 'Failed to load comments. Please try again.';
+          this.isLoading = false;
+        },
+      });
+  }
+
+  // Load more comments (pagination)
+  loadMoreComments(): void {
+    this.isLoadingMore = true;
+
+    this.commentService
+      .getPostComments(
+        this.postId,
+        30, // Load more in batches of 30
+        this.offset,
+        this.sortBy
+      )
+      .subscribe({
+        next: (moreComments) => {
+          // Add to existing comments
+          this.visibleComments = [...this.visibleComments, ...moreComments];
+
+          // Check if there are more comments to load
+          this.hasMoreComments = moreComments.length >= 30;
+
+          // Update offset for next page
+          this.offset += moreComments.length;
+
+          this.isLoadingMore = false;
+        },
+        error: (err) => {
+          console.error('Error loading more comments:', err);
+          this.error = 'Failed to load more comments. Please try again.';
+          this.isLoadingMore = false;
+        },
+      });
   }
 
   submitComment(): void {
     if (!this.newCommentContent.trim()) return;
 
     if (!this.isLoggedIn) {
-      // Handle not logged in state
       return;
     }
 
@@ -73,7 +129,8 @@ export class CommentsSectionComponent implements OnInit {
       .createComment(this.postId, this.newCommentContent.trim())
       .subscribe({
         next: (comment) => {
-          this.comments.push(comment);
+          // Add new comment to the beginning of visible comments
+          this.visibleComments.unshift(comment);
           this.newCommentContent = '';
         },
         error: (err) => {
@@ -84,6 +141,8 @@ export class CommentsSectionComponent implements OnInit {
   }
 
   handleCommentDeleted(commentId: string): void {
-    this.comments = this.comments.filter((c) => c.id !== commentId);
+    this.visibleComments = this.visibleComments.filter(
+      (c) => c.id !== commentId
+    );
   }
 }

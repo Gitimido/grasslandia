@@ -18,6 +18,8 @@ import { RouterModule } from '@angular/router';
 export class CommentComponent implements OnInit {
   @Input() comment!: Comment;
   @Input() isReply: boolean = false;
+  @Input() replyDepth: number = 0;
+  @Input() replyingToUsername?: string;
   @Output() deleted = new EventEmitter<string>();
 
   isLiked = false;
@@ -27,6 +29,17 @@ export class CommentComponent implements OnInit {
   replyContent = '';
   editContent = '';
 
+  // New properties for expandable replies
+  areRepliesExpanded = false;
+  isLoadingReplies = false;
+  isLoadingMoreReplies = false;
+  repliesCount = 0;
+  repliesLoaded = false;
+  repliesOffset = 0;
+  repliesLimit = 5; // Initial load limit
+  hasMoreReplies = false;
+  visibleReplies: Comment[] = [];
+
   constructor(
     private commentService: CommentService,
     private likeService: LikeService,
@@ -34,13 +47,13 @@ export class CommentComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Check if user has liked this comment
     this.checkLikeStatus();
-    // Get like count
     this.getLikeCount();
-    // Get vote status and counts
     this.checkVoteStatus();
     this.getVoteCounts();
+
+    // Get reply count but don't load replies yet
+    this.getRepliesCount();
   }
 
   private checkLikeStatus(): void {
@@ -75,18 +88,105 @@ export class CommentComponent implements OnInit {
       });
   }
 
+  // New method to get just the count of replies
+  private getRepliesCount(): void {
+    this.commentService
+      .getCommentRepliesCount(this.comment.id)
+      .subscribe((count) => {
+        this.repliesCount = count;
+      });
+  }
+
+  // Method to safely show @ symbol
+  getReplyingToText(username: string): string {
+    return '@' + username;
+  }
+
+  // Method to toggle expanding/collapsing replies
+  toggleReplies(): void {
+    this.areRepliesExpanded = !this.areRepliesExpanded;
+
+    // If expanding, load replies - whether or not they've been loaded before
+    if (this.areRepliesExpanded) {
+      this.loadReplies();
+    }
+  }
+
+  // Method to initially load replies
+  loadReplies(): void {
+    console.log('Loading replies for comment:', this.comment.id);
+    this.isLoadingReplies = true;
+
+    this.commentService
+      .getCommentReplies(
+        this.comment.id,
+        this.repliesLimit,
+        this.repliesOffset,
+        'top'
+      )
+      .subscribe({
+        next: (replies) => {
+          console.log('Replies loaded:', replies);
+          // Store the replies
+          this.visibleReplies = replies;
+          this.repliesLoaded = true;
+
+          // Check if there are more replies to load
+          this.hasMoreReplies = replies.length >= this.repliesLimit;
+
+          // Update offset for next page
+          this.repliesOffset = replies.length;
+
+          this.isLoadingReplies = false;
+        },
+        error: (err) => {
+          console.error('Error loading replies:', err);
+          this.isLoadingReplies = false;
+        },
+      });
+  }
+
+  // Method to load more replies (pagination)
+  loadMoreReplies(): void {
+    this.isLoadingMoreReplies = true;
+
+    // Load the next batch of replies
+    this.commentService
+      .getCommentReplies(
+        this.comment.id,
+        30, // Load more in batches of 30
+        this.repliesOffset,
+        'top'
+      )
+      .subscribe({
+        next: (moreReplies) => {
+          // Add to existing replies
+          this.visibleReplies = [...this.visibleReplies, ...moreReplies];
+
+          // Check if there are more replies to load
+          this.hasMoreReplies = moreReplies.length >= 30;
+
+          // Update offset for next page
+          this.repliesOffset += moreReplies.length;
+
+          this.isLoadingMoreReplies = false;
+        },
+        error: (err) => {
+          console.error('Error loading more replies:', err);
+          this.isLoadingMoreReplies = false;
+        },
+      });
+  }
+
   handleVote(type: string): void {
     if (!this.authService.isAuthenticated()) {
-      // Redirect to login or show login modal
       return;
     }
 
     const voteType = type as VoteType;
-
-    // Optimistic UI update
     const previousVote = this.comment.userVote;
 
-    // If clicking the same button, remove the vote
+    // Optimistic UI update logic
     if (this.comment.userVote === voteType) {
       this.comment.userVote = null;
       if (voteType === VoteType.UPVOTE) {
@@ -96,22 +196,18 @@ export class CommentComponent implements OnInit {
         this.comment.downvotes = Math.max(0, (this.comment.downvotes || 0) - 1);
         this.comment.score = (this.comment.score || 0) + 1;
       }
-    }
-    // Otherwise if already voted differently, change the vote
-    else if (this.comment.userVote) {
+    } else if (this.comment.userVote) {
       this.comment.userVote = voteType;
       if (voteType === VoteType.UPVOTE) {
         this.comment.upvotes = (this.comment.upvotes || 0) + 1;
         this.comment.downvotes = Math.max(0, (this.comment.downvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) + 2; // +1 for adding upvote, +1 for removing downvote
+        this.comment.score = (this.comment.score || 0) + 2;
       } else {
         this.comment.downvotes = (this.comment.downvotes || 0) + 1;
         this.comment.upvotes = Math.max(0, (this.comment.upvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) - 2; // -1 for adding downvote, -1 for removing upvote
+        this.comment.score = (this.comment.score || 0) - 2;
       }
-    }
-    // Otherwise, add a new vote
-    else {
+    } else {
       this.comment.userVote = voteType;
       if (voteType === VoteType.UPVOTE) {
         this.comment.upvotes = (this.comment.upvotes || 0) + 1;
@@ -122,20 +218,18 @@ export class CommentComponent implements OnInit {
       }
     }
 
-    // Send the vote to the server
+    // Send vote to server
     this.commentService.voteOnComment(this.comment.id, voteType).subscribe({
       error: (err) => {
         console.error('Error voting on comment:', err);
-        // Revert the UI on error
         this.comment.userVote = previousVote;
-        this.getVoteCounts(); // Refresh the counts from the server
+        this.getVoteCounts();
       },
     });
   }
 
   toggleLike(): void {
     if (!this.authService.isAuthenticated()) {
-      // Redirect to login or show login modal
       return;
     }
 
@@ -160,7 +254,6 @@ export class CommentComponent implements OnInit {
 
   toggleReplyForm(): void {
     if (!this.authService.isAuthenticated()) {
-      // Redirect to login or show login modal
       return;
     }
     this.showReplyForm = !this.showReplyForm;
@@ -187,10 +280,20 @@ export class CommentComponent implements OnInit {
       )
       .subscribe({
         next: (reply) => {
-          if (!this.comment.replies) {
-            this.comment.replies = [];
+          reply.replyingToUsername = this.comment.user?.username;
+
+          // Add the new reply to visible replies
+          this.visibleReplies = [reply, ...this.visibleReplies];
+
+          // If replies weren't expanded, expand them to show the new reply
+          if (!this.areRepliesExpanded) {
+            this.areRepliesExpanded = true;
+            this.repliesLoaded = true;
           }
-          this.comment.replies.push(reply);
+
+          // Increment reply count
+          this.repliesCount++;
+
           this.replyContent = '';
           this.showReplyForm = false;
         },
@@ -236,19 +339,18 @@ export class CommentComponent implements OnInit {
     return this.authService.user?.id === this.comment.userId;
   }
 
-  // Helper method to fix the template error
-  handleCommentDeleted(commentId: string): void {
-    if (this.comment.replies) {
-      this.comment.replies = this.comment.replies.filter(
-        (reply) => reply.id !== commentId
-      );
-    }
+  // Check if comment has any replies (local knowledge)
+  get hasReplies(): boolean {
+    return this.visibleReplies.length > 0;
   }
 
-  getUserDisplayName(): string {
-    if (!this.comment.user) return 'Anonymous';
+  handleCommentDeleted(commentId: string): void {
+    // Remove from visible replies
+    this.visibleReplies = this.visibleReplies.filter(
+      (reply) => reply.id !== commentId
+    );
 
-    // Return first available: username > full name > 'User'
-    return this.comment.user.username || this.comment.user.fullName || 'User';
+    // Decrement reply count
+    this.repliesCount--;
   }
 }

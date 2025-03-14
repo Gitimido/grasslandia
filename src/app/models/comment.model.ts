@@ -12,6 +12,8 @@ export interface ICommentUser {
   fullName: string;
   avatarUrl?: string;
   email?: string;
+
+  displayUsername?: string;
 }
 
 export interface IComment {
@@ -34,6 +36,7 @@ export interface IComment {
   downvotes?: number;
   score?: number;
   userVote?: VoteType | null;
+  replyingToUsername?: string;
 }
 
 export class Comment implements IComment {
@@ -50,6 +53,7 @@ export class Comment implements IComment {
   likes?: number;
   liked?: boolean;
   replies?: Comment[];
+  replyingToUsername?: string;
 
   // Voting properties
   upvotes: number;
@@ -65,6 +69,7 @@ export class Comment implements IComment {
     this.content = comment.content;
     this.createdAt = comment.createdAt;
     this.updatedAt = comment.updatedAt;
+    this.replyingToUsername = comment.replyingToUsername;
 
     // Copy user object as-is
     this.user = comment.user;
@@ -109,5 +114,16 @@ export class Comment implements IComment {
     if (interval > 1) return Math.floor(interval) + 'm';
 
     return Math.floor(seconds) + 's';
+  }
+
+  get userDisplayName(): string {
+    if (!this.user) return 'Anonymous';
+
+    // Format username to remove email-like parts
+    if (this.user.username) {
+      return this.user.username.split('@')[0].split('.')[0];
+    }
+
+    return 'User';
   }
 }

@@ -4,10 +4,10 @@
         <div class="user-info">
             <img [src]="post.user?.avatarUrl || '/assets/default-avatar.png'" alt="User avatar" class="avatar">
             <div class="user-details">
-                <a [routerLink]="['/profile', post.user?.username]" class="username">{{ post.user?.username }}</a>
+                <a [routerLink]="['/profile', post.user?.username]" class="username" [title]="post.user?.email">
+                    {{ post.user?.username }}
+                </a>
                 <div class="metadata">
-                    <span class="full-name">{{ post.user?.fullName }}</span>
-                    <span class="dot">•</span>
                     <span class="timestamp">{{ post.timeSince }}</span>
                 </div>
             </div>
@@ -51,10 +51,10 @@
         {{ post.content }}
     </div>
 
-    <!-- Use hasMedia getter and correct media interface -->
-    <app-media-display *ngIf="post.hasMedia" [media]="post.media">
-    </app-media-display>
+    <!-- Media display component -->
+    <app-media-display *ngIf="post.hasMedia" [media]="post.media"></app-media-display>
 
+    <!-- Comment count display -->
     <div class="post-stats" *ngIf="likeCount > 0 || commentCount > 0">
         <div class="like-stats" *ngIf="likeCount > 0">
             <span class="material-icons like-icon">favorite</span>
@@ -65,8 +65,9 @@
         </div>
     </div>
 
+    <!-- Action buttons -->
     <div class="post-actions">
-        <button class="action-btn" [class.liked]="isLiked" (click)="toggleLike()" aria-label="Like post">
+        <button class="action-btn" [class.active]="isLiked" (click)="toggleLike()" aria-label="Like post">
             <span class="material-icons">
                 {{ isLiked ? 'favorite' : 'favorite_border' }}
             </span>
@@ -78,7 +79,7 @@
             <span class="action-text">Comment</span>
         </button>
 
-        <button class="action-btn" [class.saved]="isSaved" (click)="toggleSavePost()" aria-label="Save post">
+        <button class="action-btn" [class.active]="isSaved" (click)="toggleSavePost()" aria-label="Save post">
             <span class="material-icons">
                 {{ isSaved ? 'bookmark' : 'bookmark_border' }}
             </span>

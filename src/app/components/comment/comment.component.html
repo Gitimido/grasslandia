@@ -1,12 +1,32 @@
 <!-- src/app/components/comment/comment.component.html -->
-<div class="comment-container" [class.is-reply]="isReply">
+<div class="comment-container" [class.is-reply]="isReply" [ngClass]="'level-' + replyDepth">
     <div class="comment-header">
         <div class="user-info">
-            <img [src]="comment.user?.avatarUrl || '/assets/default-avatar.png'" [alt]="getUserDisplayName()"
-                class="avatar">
-            <div class="user-details">
-                <a [routerLink]="['/profile', comment.user?.username]" class="username">{{ getUserDisplayName() }}</a>
-                <span class="timestamp">{{ comment.timeSince }}</span>
+            <!-- Username with hover card -->
+            <div class="username-container">
+                <a [routerLink]="['/profile', comment.user?.username]" class="username">
+                    {{ comment.user?.username }}
+
+                    <!-- Hover profile card -->
+                    <div class="profile-hover-card">
+                        <div class="hover-card-content">
+                            <img [src]="comment.user?.avatarUrl || '/assets/default-avatar.png'"
+                                [alt]="comment.user?.username" class="hover-avatar">
+                            <div class="hover-user-info">
+                                <span class="hover-username">{{ comment.user?.username }}</span>
+                                <span class="hover-email" *ngIf="comment.user?.email">{{ comment.user?.email }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                <!-- If this is a reply to another reply, show who it's replying to -->
+                <div class="replying-to">
+                    <span class="timestamp">{{ comment.timeSince }}</span>
+
+                    <span *ngIf="isReply && replyingToUsername"> Replying to </span>
+                    <a [routerLink]="['/profile', replyingToUsername] " *ngIf="isReply && replyingToUsername">{{
+                        getReplyingToText(replyingToUsername) }}</a>
+                </div>
             </div>
         </div>
 
@@ -21,6 +41,8 @@
     </div>
 
     <div class="comment-body">
+
+
         <!-- Display mode -->
         <div class="comment-content" *ngIf="!isEditing">
             {{ comment.content }}
@@ -30,8 +52,8 @@
         <div class="edit-form" *ngIf="isEditing">
             <textarea [(ngModel)]="editContent" placeholder="Edit your comment" rows="3"></textarea>
             <div class="edit-actions">
-                <button class="save-btn" (click)="saveEdit()">Save</button>
                 <button class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+                <button class="save-btn" (click)="saveEdit()">Save</button>
             </div>
         </div>
     </div>
@@ -43,7 +65,7 @@
                 (click)="handleVote('upvote')" title="Upvote">
                 <span class="material-icons">arrow_upward</span>
             </button>
-            <span class="vote-score" [class.positive]="comment.score > 0" [class.negative]="comment.score < 0">
+            <span class="vote-count" [class.positive]="comment.score > 0" [class.negative]="comment.score < 0">
                 {{ comment.score }}
             </span>
             <button class="vote-btn downvote" [class.active]="comment.userVote === 'downvote'"
@@ -55,13 +77,24 @@
         <!-- Like button -->
         <button class="action-btn" (click)="toggleLike()" [class.liked]="isLiked">
             <span class="material-icons">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
-            <span class="count">{{ likeCount > 0 ? likeCount : '' }}</span>
+            <span class="like-count" *ngIf="likeCount > 0">{{ likeCount }}</span>
         </button>
 
         <!-- Reply button -->
-        <button class="action-btn" (click)="toggleReplyForm()" *ngIf="!isReply">
+        <button class="reply-btn" (click)="toggleReplyForm()">
             <span class="material-icons">reply</span>
             <span>Reply</span>
+        </button>
+
+        <!-- View replies button - only show if comment has replies or if replies exist but aren't loaded -->
+        <button *ngIf="hasReplies || (repliesCount > 0)" class="replies-btn" (click)="toggleReplies()">
+            <span class="material-icons">
+                {{ areRepliesExpanded ? 'expand_less' : 'expand_more' }}
+            </span>
+            <span>
+                {{ areRepliesExpanded ? 'Hide' : 'View' }}
+                {{ repliesCount }} {{ repliesCount === 1 ? 'reply' : 'replies' }}
+            </span>
         </button>
     </div>
 
@@ -70,13 +103,32 @@
         <textarea [(ngModel)]="replyContent" placeholder="Write a reply..." rows="2"></textarea>
         <div class="reply-actions">
             <button class="cancel-btn" (click)="toggleReplyForm()">Cancel</button>
-            <button class="reply-btn" (click)="submitReply()" [disabled]="!replyContent.trim()">Reply</button>
+            <button class="submit-btn" (click)="submitReply()" [disabled]="!replyContent.trim()">Reply</button>
         </div>
     </div>
 
-    <!-- Replies -->
-    <div class="replies" *ngIf="comment.replies && comment.replies.length > 0">
-        <app-comment *ngFor="let reply of comment.replies" [comment]="reply" [isReply]="true"
-            (deleted)="handleCommentDeleted($event)"></app-comment>
+    <!-- Replies section - only show if expanded -->
+    <div class="replies" *ngIf="areRepliesExpanded">
+        <!-- Loading indicator for replies -->
+        <div class="loading-replies" *ngIf="isLoadingReplies">
+            <div class="spinner"></div>
+            <span>Loading replies...</span>
+        </div>
+
+        <!-- Replies list - only shown once loaded -->
+        <div *ngIf="!isLoadingReplies">
+            <app-comment *ngFor="let reply of visibleReplies" [comment]="reply" [isReply]="true"
+                [replyDepth]="replyDepth + 1" [replyingToUsername]="comment.user?.username"
+                (deleted)="handleCommentDeleted($event)">
+            </app-comment>
+
+            <!-- Load more replies button -->
+            <div class="load-more-container" *ngIf="hasMoreReplies">
+                <button class="load-more-btn" (click)="loadMoreReplies()" [disabled]="isLoadingMoreReplies">
+                    <span *ngIf="!isLoadingMoreReplies">Load more replies</span>
+                    <span *ngIf="isLoadingMoreReplies">Loading...</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>

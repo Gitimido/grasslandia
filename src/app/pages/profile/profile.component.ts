@@ -22,7 +22,6 @@ import { Observable, of, switchMap } from 'rxjs';
     RouterModule,
     SideNavComponent,
     CreatePostComponent,
-    FeedComponent,
     PostCardComponent,
   ],
   templateUrl: './profile.component.html',
