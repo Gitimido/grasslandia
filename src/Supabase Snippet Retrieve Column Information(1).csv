@@ -1,0 +1,291 @@
+﻿"object_type","object_name","sub_object_name","definition","is_nullable","column_default"
+"CONSTRAINT","2200_29627_1_not_null","users","CHECK","null","null"
+"CONSTRAINT","2200_29627_2_not_null","users","CHECK","null","null"
+"CONSTRAINT","2200_29627_3_not_null","users","CHECK","null","null"
+"CONSTRAINT","2200_29627_4_not_null","users","CHECK","null","null"
+"CONSTRAINT","2200_29643_1_not_null","groups","CHECK","null","null"
+"CONSTRAINT","2200_29643_2_not_null","groups","CHECK","null","null"
+"CONSTRAINT","2200_29654_1_not_null","group_members","CHECK","null","null"
+"CONSTRAINT","2200_29654_2_not_null","group_members","CHECK","null","null"
+"CONSTRAINT","2200_29654_3_not_null","group_members","CHECK","null","null"
+"CONSTRAINT","2200_29674_1_not_null","posts","CHECK","null","null"
+"CONSTRAINT","2200_29674_2_not_null","posts","CHECK","null","null"
+"CONSTRAINT","2200_29695_1_not_null","conversations","CHECK","null","null"
+"CONSTRAINT","2200_29704_1_not_null","conversation_participants","CHECK","null","null"
+"CONSTRAINT","2200_29704_2_not_null","conversation_participants","CHECK","null","null"
+"CONSTRAINT","2200_29704_3_not_null","conversation_participants","CHECK","null","null"
+"CONSTRAINT","2200_29723_1_not_null","messages","CHECK","null","null"
+"CONSTRAINT","2200_29723_2_not_null","messages","CHECK","null","null"
+"CONSTRAINT","2200_29723_3_not_null","messages","CHECK","null","null"
+"CONSTRAINT","2200_29723_4_not_null","messages","CHECK","null","null"
+"CONSTRAINT","2200_29743_1_not_null","media","CHECK","null","null"
+"CONSTRAINT","2200_29743_4_not_null","media","CHECK","null","null"
+"CONSTRAINT","2200_29743_5_not_null","media","CHECK","null","null"
+"CONSTRAINT","2200_29764_1_not_null","comments","CHECK","null","null"
+"CONSTRAINT","2200_29764_2_not_null","comments","CHECK","null","null"
+"CONSTRAINT","2200_29764_3_not_null","comments","CHECK","null","null"
+"CONSTRAINT","2200_29764_5_not_null","comments","CHECK","null","null"
+"CONSTRAINT","2200_29789_1_not_null","likes","CHECK","null","null"
+"CONSTRAINT","2200_29789_2_not_null","likes","CHECK","null","null"
+"CONSTRAINT","2200_29814_1_not_null","friendships","CHECK","null","null"
+"CONSTRAINT","2200_29814_2_not_null","friendships","CHECK","null","null"
+"CONSTRAINT","2200_29814_3_not_null","friendships","CHECK","null","null"
+"CONSTRAINT","2200_29836_1_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_2_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_3_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_4_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_6_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_7_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_29836_8_not_null","notifications","CHECK","null","null"
+"CONSTRAINT","2200_31096_1_not_null","user_saved_posts","CHECK","null","null"
+"CONSTRAINT","2200_31096_2_not_null","user_saved_posts","CHECK","null","null"
+"CONSTRAINT","2200_31115_1_not_null","user_hidden_posts","CHECK","null","null"
+"CONSTRAINT","2200_31115_2_not_null","user_hidden_posts","CHECK","null","null"
+"CONSTRAINT","comments_parent_id_fkey","comments","FOREIGN KEY","null","null"
+"CONSTRAINT","comments_pkey","comments","PRIMARY KEY","null","null"
+"CONSTRAINT","comments_post_id_fkey","comments","FOREIGN KEY","null","null"
+"CONSTRAINT","comments_user_id_fkey","comments","FOREIGN KEY","null","null"
+"CONSTRAINT","conversation_participants_conversation_id_fkey","conversation_participants","FOREIGN KEY","null","null"
+"CONSTRAINT","conversation_participants_conversation_id_user_id_key","conversation_participants","UNIQUE","null","null"
+"CONSTRAINT","conversation_participants_pkey","conversation_participants","PRIMARY KEY","null","null"
+"CONSTRAINT","conversation_participants_user_id_fkey","conversation_participants","FOREIGN KEY","null","null"
+"CONSTRAINT","conversations_pkey","conversations","PRIMARY KEY","null","null"
+"CONSTRAINT","different_users","friendships","CHECK","null","null"
+"CONSTRAINT","friendships_friend_id_fkey","friendships","FOREIGN KEY","null","null"
+"CONSTRAINT","friendships_pkey","friendships","PRIMARY KEY","null","null"
+"CONSTRAINT","friendships_user_id_fkey","friendships","FOREIGN KEY","null","null"
+"CONSTRAINT","friendships_user_id_friend_id_key","friendships","UNIQUE","null","null"
+"CONSTRAINT","group_members_group_id_fkey","group_members","FOREIGN KEY","null","null"
+"CONSTRAINT","group_members_group_id_user_id_key","group_members","UNIQUE","null","null"
+"CONSTRAINT","group_members_pkey","group_members","PRIMARY KEY","null","null"
+"CONSTRAINT","group_members_user_id_fkey","group_members","FOREIGN KEY","null","null"
+"CONSTRAINT","groups_pkey","groups","PRIMARY KEY","null","null"
+"CONSTRAINT","like_belongs_to_one","likes","CHECK","null","null"
+"CONSTRAINT","likes_comment_id_fkey","likes","FOREIGN KEY","null","null"
+"CONSTRAINT","likes_pkey","likes","PRIMARY KEY","null","null"
+"CONSTRAINT","likes_post_id_fkey","likes","FOREIGN KEY","null","null"
+"CONSTRAINT","likes_user_id_fkey","likes","FOREIGN KEY","null","null"
+"CONSTRAINT","likes_user_id_post_id_comment_id_key","likes","UNIQUE","null","null"
+"CONSTRAINT","media_belongs_to_one","media","CHECK","null","null"
+"CONSTRAINT","media_message_id_fkey","media","FOREIGN KEY","null","null"
+"CONSTRAINT","media_pkey","media","PRIMARY KEY","null","null"
+"CONSTRAINT","media_post_id_fkey","media","FOREIGN KEY","null","null"
+"CONSTRAINT","messages_conversation_id_fkey","messages","FOREIGN KEY","null","null"
+"CONSTRAINT","messages_pkey","messages","PRIMARY KEY","null","null"
+"CONSTRAINT","messages_user_id_fkey","messages","FOREIGN KEY","null","null"
+"CONSTRAINT","notifications_actor_id_fkey","notifications","FOREIGN KEY","null","null"
+"CONSTRAINT","notifications_pkey","notifications","PRIMARY KEY","null","null"
+"CONSTRAINT","notifications_user_id_fkey","notifications","FOREIGN KEY","null","null"
+"CONSTRAINT","posts_group_id_fkey","posts","FOREIGN KEY","null","null"
+"CONSTRAINT","posts_pkey","posts","PRIMARY KEY","null","null"
+"CONSTRAINT","posts_user_id_fkey","posts","FOREIGN KEY","null","null"
+"CONSTRAINT","user_hidden_posts_pkey","user_hidden_posts","PRIMARY KEY","null","null"
+"CONSTRAINT","user_hidden_posts_post_id_fkey","user_hidden_posts","FOREIGN KEY","null","null"
+"CONSTRAINT","user_hidden_posts_user_id_fkey","user_hidden_posts","FOREIGN KEY","null","null"
+"CONSTRAINT","user_saved_posts_pkey","user_saved_posts","PRIMARY KEY","null","null"
+"CONSTRAINT","user_saved_posts_post_id_fkey","user_saved_posts","FOREIGN KEY","null","null"
+"CONSTRAINT","user_saved_posts_user_id_fkey","user_saved_posts","FOREIGN KEY","null","null"
+"CONSTRAINT","users_email_key","users","UNIQUE","null","null"
+"CONSTRAINT","users_pkey","users","PRIMARY KEY","null","null"
+"CONSTRAINT","users_username_key","users","UNIQUE","null","null"
+"FUNCTION","handle_new_user","null","
+BEGIN
+  -- Insert a row into public users table
+  INSERT INTO public.users (
+    id,
+    email,
+    username,
+    full_name,
+    avatar_url,
+    theme,
+    privacy_settings,
+    created_at,
+    updated_at
+  ) VALUES (
+    NEW.id,
+    NEW.email,
+    LOWER(SPLIT_PART(NEW.email, '@', 1)), -- Generate username from email
+    COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)), -- Use name or generate from email
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NULL),
+    'light', -- Default theme
+    '{"posts_visibility": "public", "profile_visibility": "public"}'::jsonb, -- Default privacy settings
+    NOW(),
+    NOW()
+  );
+  RETURN NEW;
+END;
+","null","null"
+"FUNCTION","handle_user_delete","null","
+BEGIN
+  -- Delete the user from auth.users
+  DELETE FROM auth.users WHERE id = OLD.id;
+  RETURN OLD;
+END;
+","null","null"
+"FUNCTION","posts_search_update","null","
+BEGIN
+  NEW.search_vector := 
+    setweight(to_tsvector('english', COALESCE(NEW.content, '')), 'A');
+  RETURN NEW;
+END
+","null","null"
+"TABLE","comments","content","text","NO","null"
+"TABLE","comments","created_at","timestamp with time zone","YES","now()"
+"TABLE","comments","id","uuid","NO","uuid_generate_v4()"
+"TABLE","comments","parent_id","uuid","YES","null"
+"TABLE","comments","post_id","uuid","NO","null"
+"TABLE","comments","updated_at","timestamp with time zone","YES","now()"
+"TABLE","comments","user_id","uuid","NO","null"
+"TABLE","conversation_participants","conversation_id","uuid","NO","null"
+"TABLE","conversation_participants","created_at","timestamp with time zone","YES","now()"
+"TABLE","conversation_participants","id","uuid","NO","uuid_generate_v4()"
+"TABLE","conversation_participants","user_id","uuid","NO","null"
+"TABLE","conversations","created_at","timestamp with time zone","YES","now()"
+"TABLE","conversations","id","uuid","NO","uuid_generate_v4()"
+"TABLE","conversations","is_group","boolean","YES","false"
+"TABLE","conversations","name","character varying","YES","null"
+"TABLE","conversations","updated_at","timestamp with time zone","YES","now()"
+"TABLE","friendships","created_at","timestamp with time zone","YES","now()"
+"TABLE","friendships","friend_id","uuid","NO","null"
+"TABLE","friendships","id","uuid","NO","uuid_generate_v4()"
+"TABLE","friendships","status","USER-DEFINED","YES","'pending'::friendship_status"
+"TABLE","friendships","updated_at","timestamp with time zone","YES","now()"
+"TABLE","friendships","user_id","uuid","NO","null"
+"TABLE","group_members","created_at","timestamp with time zone","YES","now()"
+"TABLE","group_members","group_id","uuid","NO","null"
+"TABLE","group_members","id","uuid","NO","uuid_generate_v4()"
+"TABLE","group_members","role","USER-DEFINED","YES","'member'::member_role"
+"TABLE","group_members","user_id","uuid","NO","null"
+"TABLE","groups","created_at","timestamp with time zone","YES","now()"
+"TABLE","groups","description","text","YES","null"
+"TABLE","groups","id","uuid","NO","uuid_generate_v4()"
+"TABLE","groups","name","character varying","NO","null"
+"TABLE","groups","privacy","USER-DEFINED","YES","'public'::group_privacy"
+"TABLE","groups","updated_at","timestamp with time zone","YES","now()"
+"TABLE","likes","comment_id","uuid","YES","null"
+"TABLE","likes","created_at","timestamp with time zone","YES","now()"
+"TABLE","likes","id","uuid","NO","uuid_generate_v4()"
+"TABLE","likes","post_id","uuid","YES","null"
+"TABLE","likes","user_id","uuid","NO","null"
+"TABLE","media","created_at","timestamp with time zone","YES","now()"
+"TABLE","media","id","uuid","NO","uuid_generate_v4()"
+"TABLE","media","media_type","USER-DEFINED","NO","null"
+"TABLE","media","message_id","uuid","YES","null"
+"TABLE","media","order_index","integer","YES","0"
+"TABLE","media","post_id","uuid","YES","null"
+"TABLE","media","url","text","NO","null"
+"TABLE","messages","content","text","NO","null"
+"TABLE","messages","conversation_id","uuid","NO","null"
+"TABLE","messages","created_at","timestamp with time zone","YES","now()"
+"TABLE","messages","event","text","YES","null"
+"TABLE","messages","extension","text","NO","null"
+"TABLE","messages","id","uuid","NO","gen_random_uuid()"
+"TABLE","messages","id","uuid","NO","uuid_generate_v4()"
+"TABLE","messages","inserted_at","timestamp without time zone","NO","now()"
+"TABLE","messages","payload","jsonb","YES","null"
+"TABLE","messages","private","boolean","YES","false"
+"TABLE","messages","read","boolean","YES","false"
+"TABLE","messages","topic","text","NO","null"
+"TABLE","messages","updated_at","timestamp without time zone","NO","now()"
+"TABLE","messages","user_id","uuid","NO","null"
+"TABLE","notifications","actor_id","uuid","NO","null"
+"TABLE","notifications","content","text","NO","null"
+"TABLE","notifications","created_at","timestamp with time zone","YES","now()"
+"TABLE","notifications","icon","text","YES","null"
+"TABLE","notifications","id","uuid","NO","uuid_generate_v4()"
+"TABLE","notifications","read","boolean","YES","false"
+"TABLE","notifications","resource_id","uuid","NO","null"
+"TABLE","notifications","resource_type","character varying","NO","null"
+"TABLE","notifications","type","USER-DEFINED","NO","null"
+"TABLE","notifications","user_id","uuid","NO","null"
+"TABLE","posts","content","text","YES","null"
+"TABLE","posts","created_at","timestamp with time zone","YES","now()"
+"TABLE","posts","group_id","uuid","YES","null"
+"TABLE","posts","id","uuid","NO","uuid_generate_v4()"
+"TABLE","posts","privacy_level","USER-DEFINED","YES","'public'::privacy_level"
+"TABLE","posts","search_vector","tsvector","YES","null"
+"TABLE","posts","updated_at","timestamp with time zone","YES","now()"
+"TABLE","posts","user_id","uuid","NO","null"
+"TABLE","user_hidden_posts","hidden_at","timestamp with time zone","YES","now()"
+"TABLE","user_hidden_posts","post_id","uuid","NO","null"
+"TABLE","user_hidden_posts","user_id","uuid","NO","null"
+"TABLE","user_saved_posts","post_id","uuid","NO","null"
+"TABLE","user_saved_posts","saved_at","timestamp with time zone","YES","now()"
+"TABLE","user_saved_posts","user_id","uuid","NO","null"
+"TABLE","users","aud","character varying","YES","null"
+"TABLE","users","avatar_url","text","YES","null"
+"TABLE","users","banned_until","timestamp with time zone","YES","null"
+"TABLE","users","bio","text","YES","null"
+"TABLE","users","confirmation_sent_at","timestamp with time zone","YES","null"
+"TABLE","users","confirmation_token","character varying","YES","null"
+"TABLE","users","confirmed_at","timestamp with time zone","YES","null"
+"TABLE","users","created_at","timestamp with time zone","YES","null"
+"TABLE","users","created_at","timestamp with time zone","YES","now()"
+"TABLE","users","deleted_at","timestamp with time zone","YES","null"
+"TABLE","users","email","character varying","NO","null"
+"TABLE","users","email","character varying","YES","null"
+"TABLE","users","email_change","character varying","YES","null"
+"TABLE","users","email_change_confirm_status","smallint","YES","0"
+"TABLE","users","email_change_sent_at","timestamp with time zone","YES","null"
+"TABLE","users","email_change_token_current","character varying","YES","''::character varying"
+"TABLE","users","email_change_token_new","character varying","YES","null"
+"TABLE","users","email_confirmed_at","timestamp with time zone","YES","null"
+"TABLE","users","encrypted_password","character varying","YES","null"
+"TABLE","users","full_name","character varying","NO","null"
+"TABLE","users","id","uuid","NO","null"
+"TABLE","users","id","uuid","NO","uuid_generate_v4()"
+"TABLE","users","instance_id","uuid","YES","null"
+"TABLE","users","invited_at","timestamp with time zone","YES","null"
+"TABLE","users","is_anonymous","boolean","NO","false"
+"TABLE","users","is_sso_user","boolean","NO","false"
+"TABLE","users","is_super_admin","boolean","YES","null"
+"TABLE","users","last_sign_in_at","timestamp with time zone","YES","null"
+"TABLE","users","phone","text","YES","NULL::character varying"
+"TABLE","users","phone_change","text","YES","''::character varying"
+"TABLE","users","phone_change_sent_at","timestamp with time zone","YES","null"
+"TABLE","users","phone_change_token","character varying","YES","''::character varying"
+"TABLE","users","phone_confirmed_at","timestamp with time zone","YES","null"
+"TABLE","users","privacy_settings","jsonb","YES","'{"posts_visibility": "public", "profile_visibility": "public"}'::jsonb"
+"TABLE","users","raw_app_meta_data","jsonb","YES","null"
+"TABLE","users","raw_user_meta_data","jsonb","YES","null"
+"TABLE","users","reauthentication_sent_at","timestamp with time zone","YES","null"
+"TABLE","users","reauthentication_token","character varying","YES","''::character varying"
+"TABLE","users","recovery_sent_at","timestamp with time zone","YES","null"
+"TABLE","users","recovery_token","character varying","YES","null"
+"TABLE","users","role","character varying","YES","null"
+"TABLE","users","theme","USER-DEFINED","YES","'light'::theme_option"
+"TABLE","users","updated_at","timestamp with time zone","YES","now()"
+"TABLE","users","updated_at","timestamp with time zone","YES","null"
+"TABLE","users","username","character varying","NO","null"
+"TRIGGER","on_public_user_deleted","DELETE","EXECUTE FUNCTION handle_user_delete()","null","null"
+"TRIGGER","posts_search_update","INSERT","EXECUTE FUNCTION posts_search_update()","null","null"
+"TRIGGER","posts_search_update","UPDATE","EXECUTE FUNCTION posts_search_update()","null","null"
+"VIEW","feed_posts","null"," SELECT p.id,
+    p.user_id,
+    p.content,
+    p.privacy_level,
+    p.group_id,
+    p.created_at,
+    p.updated_at,
+    p.search_vector,
+    u.username,
+    u.avatar_url
+   FROM (posts p
+     JOIN users u ON ((p.user_id = u.id)))
+  WHERE ((p.privacy_level = 'public'::privacy_level) OR ((p.privacy_level = 'friends'::privacy_level) AND (EXISTS ( SELECT 1
+           FROM friendships f
+          WHERE (((f.user_id = p.user_id) OR (f.friend_id = p.user_id)) AND (f.status = 'accepted'::friendship_status))))));","null","null"
+"VIEW","user_profile_posts","null"," SELECT p.id,
+    p.user_id,
+    p.content,
+    p.privacy_level,
+    p.group_id,
+    p.created_at,
+    p.updated_at,
+    p.search_vector,
+    count(l.id) AS like_count,
+    count(c.id) AS comment_count
+   FROM ((posts p
+     LEFT JOIN likes l ON ((p.id = l.post_id)))
+     LEFT JOIN comments c ON ((p.id = c.post_id)))
+  GROUP BY p.id;","null","null"
