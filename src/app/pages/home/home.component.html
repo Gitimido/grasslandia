@@ -5,12 +5,23 @@
     <!-- Add the auth debugger only during development -->
     <app-auth-debug></app-auth-debug>
 
-    <!-- Show create post component only for logged-in users -->
-    <app-create-post *ngIf="isLoggedIn" class="create-post-wrapper"
-        (postCreated)="handlePostCreated($event)"></app-create-post>
+    <div class="content-layout">
+        <div class="main-content">
+            <!-- Show create post component only for logged-in users -->
+            <app-create-post *ngIf="isLoggedIn" class="create-post-wrapper"
+                (postCreated)="handlePostCreated($event)"></app-create-post>
 
-    <!-- Feed -->
-    <div class="feed-container">
-        <app-feed [style]="feedStyle"></app-feed>
+            <!-- Feed -->
+            <div class="feed-container">
+                <app-feed [style]="feedStyle"></app-feed>
+            </div>
+        </div>
+
+        <!-- Right sidebar for friend requests and other widgets -->
+        <div *ngIf="isLoggedIn" class="right-sidebar">
+            <app-friend-requests></app-friend-requests>
+
+            <!-- You can add more widgets here in the future -->
+        </div>
     </div>
 </div>

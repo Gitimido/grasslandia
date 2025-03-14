@@ -3,7 +3,12 @@
 export interface INotification {
   id: string;
   userId: string;
-  type: 'like' | 'comment' | 'friend_request' | 'group_invite';
+  type:
+    | 'like'
+    | 'comment'
+    | 'friend_request'
+    | 'friend_accepted'
+    | 'group_invite'; // Added 'friend_accepted'
   content: string;
   icon?: string;
   actorId: string;
@@ -19,7 +24,12 @@ export interface INotification {
 export class Notification implements INotification {
   id: string;
   userId: string;
-  type: 'like' | 'comment' | 'friend_request' | 'group_invite';
+  type:
+    | 'like'
+    | 'comment'
+    | 'friend_request'
+    | 'friend_accepted'
+    | 'group_invite'; // Added 'friend_accepted'
   content: string;
   icon?: string;
   actorId: string;

@@ -37,6 +37,28 @@
   }
 }
 
+/* New layout styling */
+.content-layout {
+  display: flex;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0; /* Important for flex items with overflow */
+}
+
+.right-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+
+  @media (max-width: 992px) {
+    display: none; /* Hide on smaller screens */
+  }
+}
+
 .create-post-wrapper {
   max-width: 600px;
   margin: 0 auto 24px;

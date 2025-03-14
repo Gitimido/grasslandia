@@ -36,14 +36,43 @@
                             <span class="stat-value">{{posts.length}}</span>
                             <span class="stat-label">Posts</span>
                         </div>
+                        <!-- Add more stats here in the future -->
                     </div>
                 </div>
 
                 <!-- Profile actions -->
                 <div class="profile-actions">
                     <button *ngIf="isCurrentUser" class="edit-profile-btn" routerLink="/settings">Edit Profile</button>
-                    <button *ngIf="!isCurrentUser" class="follow-btn">Follow</button>
-                    <button *ngIf="!isCurrentUser" class="message-btn">Message</button>
+
+                    <!-- Friend Button - Only show for other users when logged in -->
+                    <ng-container *ngIf="!isCurrentUser && authService.isAuthenticated()">
+                        <!-- Main Friend Button -->
+                        <button *ngIf="friendshipStatus !== FriendshipStatus.PENDING || isInitiator" class="friend-btn"
+                            [class]="getFriendButtonClass()"
+                            [disabled]="isFriendActionLoading || (friendshipStatus === FriendshipStatus.PENDING && isInitiator)"
+                            (click)="onFriendButtonClick()">
+                            <span *ngIf="!isFriendActionLoading">{{ getFriendButtonText() }}</span>
+                            <span *ngIf="isFriendActionLoading" class="loading-spinner-sm"></span>
+                        </button>
+
+                        <!-- Response buttons for pending requests when user is recipient -->
+                        <div *ngIf="friendshipStatus === FriendshipStatus.PENDING && !isInitiator"
+                            class="friend-request-actions">
+                            <button class="accept-btn" [disabled]="isFriendActionLoading"
+                                (click)="acceptFriendRequest()">
+                                <span *ngIf="!isFriendActionLoading">Accept</span>
+                                <span *ngIf="isFriendActionLoading" class="loading-spinner-sm"></span>
+                            </button>
+                            <button class="reject-btn" [disabled]="isFriendActionLoading"
+                                (click)="rejectFriendRequest()">
+                                <span *ngIf="!isFriendActionLoading">Reject</span>
+                                <span *ngIf="isFriendActionLoading" class="loading-spinner-sm"></span>
+                            </button>
+                        </div>
+                    </ng-container>
+
+                    <button *ngIf="!isCurrentUser && friendshipStatus === FriendshipStatus.ACCEPTED"
+                        class="message-btn">Message</button>
                 </div>
             </div>
         </div>
