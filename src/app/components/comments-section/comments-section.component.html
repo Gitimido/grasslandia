@@ -3,7 +3,6 @@
     <div class="comments-header">
         <h3>Comments</h3>
     </div>
-
     <!-- New comment form -->
     <div class="comment-form" *ngIf="isLoggedIn">
         <div class="input-wrapper">
@@ -14,32 +13,26 @@
             </button>
         </div>
     </div>
-
     <div class="login-prompt" *ngIf="!isLoggedIn">
         <p>Please <a routerLink="/signin">sign in</a> to post a comment.</p>
     </div>
-
     <!-- Error message -->
     <div class="error-message" *ngIf="error">
         {{ error }}
     </div>
-
     <!-- Loading state -->
     <div class="loading" *ngIf="isLoading">
         <div class="spinner"></div>
         <span>Loading comments...</span>
     </div>
-
     <!-- Comments list -->
     <div class="comments-list" *ngIf="!isLoading">
         <div class="no-comments" *ngIf="visibleComments.length === 0">
             <p>No comments yet. Be the first to comment!</p>
         </div>
-
         <app-comment *ngFor="let comment of visibleComments" [comment]="comment"
             (deleted)="handleCommentDeleted($event)">
         </app-comment>
-
         <!-- Load more comments button -->
         <div class="load-more-container" *ngIf="hasMoreComments">
             <button class="load-more-btn" (click)="loadMoreComments()" [disabled]="isLoadingMore">

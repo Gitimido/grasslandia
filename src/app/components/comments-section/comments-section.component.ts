@@ -69,19 +69,36 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
           )
         )
       );
+
     // Set initial sort order and load comments
     this.setSortBy('recent');
     this.loadComments();
 
-    // Subscribe to comment count to determine if more comments can be loaded
+    // Subscribe to loading state from store
+    this.subscriptions.push(
+      this.isLoading$.subscribe((loading) => {
+        this.isLoading = loading;
+      })
+    );
+
+    // Subscribe to comments to update visible comments
     this.subscriptions.push(
       this.comments$.subscribe((comments) => {
+        this.visibleComments = comments;
+
         // If we received exactly the number of comments we requested,
         // there are probably more
         this.hasMoreComments = comments.length >= this.limit;
 
         // Update offset for potential future loads
         this.offset = comments.length;
+      })
+    );
+
+    // Subscribe to error state
+    this.subscriptions.push(
+      this.error$.subscribe((errorMsg) => {
+        this.error = errorMsg || undefined;
       })
     );
   }
