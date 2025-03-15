@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CommentService } from '../../core/services/comment.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Comment } from '../../models';
+import { Comment, VoteType, IComment } from '../../models';
 import { CommentComponent } from '../comment/comment.component';
 import { Store } from '@ngrx/store';
 import {
@@ -13,11 +13,13 @@ import {
   selectError,
 } from '../../core/store/Comments/comments.selectors';
 import { Observable, Subscription } from 'rxjs';
+import { RouterModule } from '@angular/router';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-comments-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommentComponent],
+  imports: [CommonModule, FormsModule, CommentComponent, RouterModule],
   templateUrl: './comments-section.component.html',
   styleUrls: ['./comments-section.component.scss'],
 })
@@ -31,6 +33,11 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
 
   newCommentContent: string = '';
   isLoadingMore = false;
+
+  // Local state properties
+  visibleComments: Comment[] = [];
+  isLoading = true;
+  error?: string;
 
   // Pagination and sorting
   offset = 0;
@@ -52,6 +59,16 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
     this.isLoading$ = this.store.select(selectIsLoading);
     this.error$ = this.store.select(selectError);
 
+    this.comments$ = this.store
+      .select(selectPostComments(this.postId))
+      .pipe(
+        map((comments) =>
+          comments.map(
+            (storeComment) =>
+              new Comment(this.convertStoreCommentToIComment(storeComment))
+          )
+        )
+      );
     // Set initial sort order and load comments
     this.setSortBy('recent');
     this.loadComments();
@@ -67,6 +84,33 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
         this.offset = comments.length;
       })
     );
+  }
+
+  private convertStoreCommentToIComment(storeComment: any): IComment {
+    // Create a new object with the correct structure
+    const convertedComment: IComment = {
+      id: storeComment.id,
+      userId: storeComment.userId,
+      postId: storeComment.postId,
+      parentId: storeComment.parentId,
+      content: storeComment.content,
+      createdAt: storeComment.createdAt,
+      updatedAt: storeComment.updatedAt,
+      user: storeComment.user,
+      upvotes: storeComment.upvotes,
+      downvotes: storeComment.downvotes,
+      score: storeComment.score,
+      userVote: null,
+    };
+
+    // Explicitly convert the string vote type to enum
+    if (storeComment.userVote === 'upvote') {
+      convertedComment.userVote = VoteType.UPVOTE;
+    } else if (storeComment.userVote === 'downvote') {
+      convertedComment.userVote = VoteType.DOWNVOTE;
+    }
+
+    return convertedComment;
   }
 
   ngOnDestroy(): void {

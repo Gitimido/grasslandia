@@ -1,5 +1,12 @@
 // src/app/components/comment/comment.component.ts
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  OnDestroy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Comment, VoteType } from '../../models';
@@ -7,6 +14,7 @@ import { CommentService } from '../../core/services/comment.service';
 import { LikeService } from '../../core/services/like.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-comment',
@@ -15,7 +23,7 @@ import { RouterModule } from '@angular/router';
   templateUrl: './comment.component.html',
   styleUrls: ['./comment.component.scss'],
 })
-export class CommentComponent implements OnInit {
+export class CommentComponent implements OnInit, OnDestroy {
   @Input() comment!: Comment;
   @Input() isReply: boolean = false;
   @Input() replyDepth: number = 0;
@@ -40,6 +48,10 @@ export class CommentComponent implements OnInit {
   hasMoreReplies = false;
   visibleReplies: Comment[] = [];
 
+  // Track subscriptions
+  private likeSubscription?: Subscription;
+  private likeStatusSubscription?: Subscription;
+
   constructor(
     private commentService: CommentService,
     private likeService: LikeService,
@@ -47,27 +59,33 @@ export class CommentComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.checkLikeStatus();
-    this.getLikeCount();
     this.checkVoteStatus();
     this.getVoteCounts();
-
-    // Get reply count but don't load replies yet
     this.getRepliesCount();
-  }
 
-  private checkLikeStatus(): void {
-    this.likeService
-      .hasUserLikedComment(this.comment.id)
-      .subscribe((isLiked) => {
-        this.isLiked = isLiked;
+    // Subscribe to like count updates
+    this.likeSubscription = this.likeService
+      .getCommentLikesObservable(this.comment.id)
+      .subscribe((count) => {
+        this.likeCount = count;
+      });
+
+    // Subscribe to like status updates
+    this.likeStatusSubscription = this.likeService
+      .getUserCommentLikeObservable(this.comment.id)
+      .subscribe((liked) => {
+        this.isLiked = liked;
       });
   }
 
-  private getLikeCount(): void {
-    this.likeService.getCommentLikeCount(this.comment.id).subscribe((count) => {
-      this.likeCount = count;
-    });
+  ngOnDestroy(): void {
+    if (this.likeSubscription) {
+      this.likeSubscription.unsubscribe();
+    }
+
+    if (this.likeStatusSubscription) {
+      this.likeStatusSubscription.unsubscribe();
+    }
   }
 
   private checkVoteStatus(): void {
@@ -114,7 +132,6 @@ export class CommentComponent implements OnInit {
 
   // Method to initially load replies
   loadReplies(): void {
-    console.log('Loading replies for comment:', this.comment.id);
     this.isLoadingReplies = true;
 
     this.commentService
@@ -126,7 +143,6 @@ export class CommentComponent implements OnInit {
       )
       .subscribe({
         next: (replies) => {
-          console.log('Replies loaded:', replies);
           // Store the replies
           this.visibleReplies = replies;
           this.repliesLoaded = true;
@@ -235,18 +251,10 @@ export class CommentComponent implements OnInit {
 
     if (this.isLiked) {
       this.likeService.unlikeComment(this.comment.id).subscribe({
-        next: () => {
-          this.isLiked = false;
-          this.likeCount--;
-        },
         error: (err) => console.error('Error unliking comment:', err),
       });
     } else {
       this.likeService.likeComment(this.comment.id).subscribe({
-        next: () => {
-          this.isLiked = true;
-          this.likeCount++;
-        },
         error: (err) => console.error('Error liking comment:', err),
       });
     }
