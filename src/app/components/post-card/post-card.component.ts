@@ -11,13 +11,17 @@ import { CommonModule } from '@angular/common';
 import { Post } from '../../models';
 import { MediaDisplayComponent } from '../media-display/media-display.component';
 import { PostService } from '../../core/services/post.service';
-import { AuthService } from '../../core/services/auth.service';
 import { RouterModule } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
-import { Media, IMedia } from '../../models';
+import { Media } from '../../models';
 import { LikeService } from '../../core/services/like.service';
 import { CommentService } from '../../core/services/comment.service';
 import { CommentsSectionComponent } from '../comments-section/comments-section.component';
+import { Store } from '@ngrx/store';
+import {
+  selectUser,
+  selectIsAuthenticated,
+} from '../../core/store/Auth/auth.selectors';
 
 @Component({
   selector: 'app-post-card',
@@ -44,42 +48,39 @@ export class PostCardComponent implements OnInit, OnDestroy {
   likeCount = 0;
   commentCount = 0;
   private userSubscription?: Subscription;
+  private isAuthenticatedSubscription?: Subscription;
 
   constructor(
     private postService: PostService,
-    private authService: AuthService,
     private likeService: LikeService,
-    private commentService: CommentService
+    private commentService: CommentService,
+    private store: Store
   ) {}
 
   ngOnInit(): void {
-    // Get current user ID from the AuthService
-    this.currentUserId = this.authService.user?.id || null;
-    console.log('Current user ID:', this.currentUserId);
-
-    // Subscribe to user changes
-    this.userSubscription = this.authService.user$.subscribe((user) => {
+    // Subscribe to user from store
+    this.userSubscription = this.store.select(selectUser).subscribe((user) => {
       this.currentUserId = user?.id || null;
+      console.log('Current user ID:', this.currentUserId);
+
       if (this.currentUserId && this.post) {
         this.checkSavedStatus();
         this.checkLikeStatus();
       }
     });
 
-    // Initial check if we already have a user
-    if (this.currentUserId && this.post) {
-      this.checkSavedStatus();
-      this.checkLikeStatus();
-    }
-
     // Get counts
     this.getCounts();
   }
 
   ngOnDestroy(): void {
-    // Clean up subscription to prevent memory leaks
+    // Clean up subscriptions to prevent memory leaks
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
+    }
+
+    if (this.isAuthenticatedSubscription) {
+      this.isAuthenticatedSubscription.unsubscribe();
     }
   }
 
@@ -116,33 +117,38 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
   toggleLike(): void {
     console.log('Toggle like clicked');
-    if (!this.authService.isAuthenticated()) {
-      console.log('User not authenticated');
-      // Redirect to login or show login modal
-      return;
-    }
 
-    if (this.isLiked) {
-      console.log('Unliking post');
-      this.likeService.unlikePost(this.post.id).subscribe({
-        next: () => {
-          console.log('Unlike successful');
-          this.isLiked = false;
-          this.likeCount--;
-        },
-        error: (err) => console.error('Error unliking post:', err),
+    // Check authentication state from store
+    this.isAuthenticatedSubscription = this.store
+      .select(selectIsAuthenticated)
+      .subscribe((isAuthenticated) => {
+        if (!isAuthenticated) {
+          console.log('User not authenticated');
+          return;
+        }
+
+        if (this.isLiked) {
+          console.log('Unliking post');
+          this.likeService.unlikePost(this.post.id).subscribe({
+            next: () => {
+              console.log('Unlike successful');
+              this.isLiked = false;
+              this.likeCount--;
+            },
+            error: (err) => console.error('Error unliking post:', err),
+          });
+        } else {
+          console.log('Liking post');
+          this.likeService.likePost(this.post.id).subscribe({
+            next: () => {
+              console.log('Like successful');
+              this.isLiked = true;
+              this.likeCount++;
+            },
+            error: (err) => console.error('Error liking post:', err),
+          });
+        }
       });
-    } else {
-      console.log('Liking post');
-      this.likeService.likePost(this.post.id).subscribe({
-        next: () => {
-          console.log('Like successful');
-          this.isLiked = true;
-          this.likeCount++;
-        },
-        error: (err) => console.error('Error liking post:', err),
-      });
-    }
   }
 
   toggleComments(): void {
@@ -152,37 +158,45 @@ export class PostCardComponent implements OnInit, OnDestroy {
   }
 
   toggleSavePost(): void {
-    if (!this.authService.isAuthenticated()) {
-      // Redirect to login or show login modal
-      return;
-    }
+    this.store
+      .select(selectIsAuthenticated)
+      .subscribe((isAuthenticated) => {
+        if (!isAuthenticated) {
+          return;
+        }
 
-    if (this.isSaved) {
-      this.postService
-        .unsavePost(this.post.id, this.currentUserId!)
-        .subscribe(() => {
-          this.isSaved = false;
-        });
-    } else {
-      this.postService
-        .savePost(this.post.id, this.currentUserId!)
-        .subscribe(() => {
-          this.isSaved = true;
-        });
-    }
+        if (this.isSaved) {
+          this.postService
+            .unsavePost(this.post.id, this.currentUserId!)
+            .subscribe(() => {
+              this.isSaved = false;
+            });
+        } else {
+          this.postService
+            .savePost(this.post.id, this.currentUserId!)
+            .subscribe(() => {
+              this.isSaved = true;
+            });
+        }
+      })
+      .unsubscribe();
   }
 
   hidePost(): void {
-    if (!this.authService.isAuthenticated()) {
-      // Redirect to login or show login modal
-      return;
-    }
+    this.store
+      .select(selectIsAuthenticated)
+      .subscribe((isAuthenticated) => {
+        if (!isAuthenticated) {
+          return;
+        }
 
-    this.postService
-      .hidePost(this.post.id, this.currentUserId!)
-      .subscribe(() => {
-        this.isHidden = true;
-      });
+        this.postService
+          .hidePost(this.post.id, this.currentUserId!)
+          .subscribe(() => {
+            this.isHidden = true;
+          });
+      })
+      .unsubscribe();
   }
 
   deletePost(): void {
@@ -194,7 +208,6 @@ export class PostCardComponent implements OnInit, OnDestroy {
   sharePost(): void {
     this.postService.sharePost(this.post.id).subscribe((shareLink) => {
       navigator.clipboard.writeText(shareLink).then(() => {
-        // Could use a toast/notification service here
         console.log('Link copied to clipboard');
       });
     });

@@ -1,3 +1,4 @@
+// src/app/pages/sign-up/sign-up.component.ts
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -16,6 +17,9 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrls: ['./sign-up.component.scss'],
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
+  host: {
+    class: 'auth-page', // This adds a class to the host element
+  },
 })
 export class SignUpComponent {
   signUpForm: FormGroup;
@@ -47,9 +51,6 @@ export class SignUpComponent {
 
     return password === confirmPassword ? null : { passwordMismatch: true };
   }
-
-  // src/app/pages/sign-up/sign-up.component.ts
-  // Modify the onSubmit method to send username and fullName
 
   onSubmit(): void {
     if (this.signUpForm.valid) {

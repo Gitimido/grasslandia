@@ -7,19 +7,28 @@ import {
   User,
   Session,
 } from '@supabase/supabase-js';
-import { BehaviorSubject, Observable, from, throwError, of } from 'rxjs';
-import { tap, catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { Observable, from, throwError, of } from 'rxjs';
+import { tap, catchError, finalize, map } from 'rxjs/operators';
 import { environment } from '../../../environment';
+import { Store } from '@ngrx/store';
+import {
+  loginSuccess,
+  logout,
+  setAuthLoading,
+  setAuthError,
+} from '../store/Auth/auth.actions';
+import {
+  selectIsAuthenticated,
+  selectUser,
+} from '../store/Auth/auth.selectors';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private supabase: SupabaseClient;
-  private currentUser = new BehaviorSubject<User | null>(null);
-  private loading = new BehaviorSubject<boolean>(false);
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private store: Store) {
     // Use default Supabase client with simplified options
     this.supabase = createClient(
       environment.supabaseUrl,
@@ -37,46 +46,46 @@ export class AuthService {
     this.setupAuthListener();
   }
 
-  // Used by:
-  // - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-  // - UserService (src/app/core/services/user.service.ts)
-  // - PostService (src/app/core/services/post.service.ts)
-  // - ProfileComponent (src/app/pages/profile/profile.component.ts)
-  get user(): User | null {
-    return this.currentUser.value;
+  // Get authenticated state from store
+  get isAuthenticated$(): Observable<boolean> {
+    return this.store.select(selectIsAuthenticated);
   }
 
-  // Used by:
-  // - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-  // - SideNavComponent (src/app/components/side-nav/side-nav.component.ts)
+  // Get user from store
   get user$(): Observable<User | null> {
-    return this.currentUser.asObservable();
+    return this.store.select(selectUser);
   }
 
-  // Used by:
-  // - No direct usage found in components
-  get loading$(): Observable<boolean> {
-    return this.loading.asObservable();
+  // For backwards compatibility until all components are updated
+  get user(): User | null {
+    let currentUser: User | null = null;
+    this.user$
+      .subscribe((user) => {
+        currentUser = user;
+      })
+      .unsubscribe();
+    return currentUser;
   }
 
-  // Used by:
-  // - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-  // - HomeComponent (src/app/pages/home/home.component.ts)
+  // For backwards compatibility until all components are updated
   isAuthenticated(): boolean {
-    return !!this.currentUser.value;
+    let authenticated = false;
+    this.isAuthenticated$
+      .subscribe((isAuth) => {
+        authenticated = isAuth;
+      })
+      .unsubscribe();
+    return authenticated;
   }
 
-  // ----- AUTHENTICATION METHODS (PUBLIC API) -----
-
-  // Used by:
-  // - SignUpComponent (src/app/pages/sign-up/sign-up.component.ts)
   signUp(
     email: string,
     password: string,
     username: string,
     fullName: string
   ): Observable<User | null> {
-    this.loading.next(true);
+    this.store.dispatch(setAuthLoading({ isLoading: true }));
+    this.store.dispatch(setAuthError({ error: null }));
 
     const metadata = {
       username: username,
@@ -96,23 +105,26 @@ export class AuthService {
         if (response.error) throw response.error;
 
         const user = response.data.user;
-        this.currentUser.next(user);
+        if (user) {
+          this.store.dispatch(loginSuccess({ user }));
+        }
         return user;
       }),
       catchError((error) => {
         console.error('Error during sign up:', error.message);
+        this.store.dispatch(setAuthError({ error: error.message }));
         return of(null);
       }),
       finalize(() => {
-        this.loading.next(false);
+        this.store.dispatch(setAuthLoading({ isLoading: false }));
       })
     );
   }
 
-  // Used by:
-  // - SignInComponent (src/app/pages/sign-in/sign-in.component.ts)
   signIn(email: string, password: string): Observable<User | null> {
-    this.loading.next(true);
+    this.store.dispatch(setAuthLoading({ isLoading: true }));
+    this.store.dispatch(setAuthError({ error: null }));
+
     console.log('Signing in with:', email);
 
     return from(
@@ -125,48 +137,48 @@ export class AuthService {
         }
 
         const user = response.data.user;
-        this.currentUser.next(user);
+        if (user) {
+          this.store.dispatch(loginSuccess({ user }));
+        }
         console.log('Sign in successful, user:', user?.id);
         return user;
       }),
       catchError((error) => {
         console.error('Error during sign in:', error.message);
+        this.store.dispatch(setAuthError({ error: error.message }));
         return of(null);
       }),
       finalize(() => {
-        this.loading.next(false);
+        this.store.dispatch(setAuthLoading({ isLoading: false }));
       })
     );
   }
 
-  // Used by:
-  // - SideNavComponent (src/app/components/side-nav/side-nav.component.ts)
   signOut(): Observable<void> {
-    this.loading.next(true);
+    this.store.dispatch(setAuthLoading({ isLoading: true }));
     console.log('Signing out...');
 
     return from(this.supabase.auth.signOut()).pipe(
       tap(() => {
-        this.currentUser.next(null);
+        this.store.dispatch(logout());
         console.log('Sign out successful');
         this.router.navigate(['/signin']);
       }),
       map(() => undefined),
       catchError((error) => {
         console.error('Error during sign out:', error.message);
+        this.store.dispatch(setAuthError({ error: error.message }));
         return throwError(() => new Error(error.message));
       }),
       finalize(() => {
-        this.loading.next(false);
+        this.store.dispatch(setAuthLoading({ isLoading: false }));
       })
     );
   }
 
-  // ----- PRIVATE METHODS -----
-
   // Used internally by the service constructor
   private loadUser(): void {
-    this.loading.next(true);
+    this.store.dispatch(setAuthLoading({ isLoading: true }));
     console.log('Loading user session...');
 
     from(this.supabase.auth.getSession())
@@ -174,7 +186,7 @@ export class AuthService {
         tap(({ data, error }) => {
           if (error) {
             console.error('Error loading session:', error.message);
-            this.currentUser.next(null);
+            this.store.dispatch(setAuthError({ error: error.message }));
             return;
           }
 
@@ -183,15 +195,20 @@ export class AuthService {
             'Session loaded:',
             user ? `User ${user.id} found` : 'No active session'
           );
-          this.currentUser.next(user);
+
+          if (user) {
+            this.store.dispatch(loginSuccess({ user }));
+          } else {
+            this.store.dispatch(logout());
+          }
         }),
         catchError((error) => {
           console.error('Error loading user session:', error.message);
-          this.currentUser.next(null);
+          this.store.dispatch(setAuthError({ error: error.message }));
           return of(null);
         }),
         finalize(() => {
-          this.loading.next(false);
+          this.store.dispatch(setAuthLoading({ isLoading: false }));
         })
       )
       .subscribe();
@@ -202,24 +219,12 @@ export class AuthService {
     this.supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
       const user = session?.user || null;
-      this.currentUser.next(user);
+
+      if (user) {
+        this.store.dispatch(loginSuccess({ user }));
+      } else {
+        this.store.dispatch(logout());
+      }
     });
   }
-
-  /* 
-  // Sign in with Google - Commented out for future use
-  signInWithGoogle(): Observable<any> {
-    return from(this.supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/auth/callback'
-      }
-    })).pipe(
-      catchError(error => {
-        console.error('Google sign-in error:', error.message);
-        return throwError(() => new Error(error.message));
-      })
-    );
-  }
-  */
 }

@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+// src/app/pages/sign-in/sign-in.component.ts
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormsModule,
@@ -16,6 +17,9 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrls: ['./sign-in.component.scss'],
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
+  host: {
+    class: 'auth-page', // This adds a class to the host element
+  },
 })
 export class SignInComponent {
   signInForm: FormGroup;

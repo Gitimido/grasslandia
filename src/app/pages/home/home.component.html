@@ -1,18 +1,12 @@
 <!-- src/app/pages/home/home.component.html -->
-<app-side-nav></app-side-nav>
-<div *ngIf="isLoggedIn" class="right-sidebar">
-</div>
-
-<app-top-nav-bar></app-top-nav-bar>
-
-<div class="home-container" [class.sidebar-collapsed]="isSidebarCollapsed">
+<div class="home-container">
     <!-- Add the auth debugger only during development -->
     <app-auth-debug></app-auth-debug>
 
     <div class="content-layout">
         <div class="main-content">
             <!-- Show create post component only for logged-in users -->
-            <app-create-post *ngIf="isLoggedIn" class="create-post-wrapper"
+            <app-create-post *ngIf="isLoggedIn$ | async" class="create-post-wrapper"
                 (postCreated)="handlePostCreated($event)"></app-create-post>
 
             <!-- Feed -->
@@ -20,9 +14,5 @@
                 <app-feed [style]="feedStyle"></app-feed>
             </div>
         </div>
-
-
-
-        <!-- You can add more widgets here in the future -->
     </div>
 </div>

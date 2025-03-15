@@ -1,3 +1,4 @@
+// src/app/app.config.ts
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
@@ -6,6 +7,7 @@ import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 
 import { userDataReducer } from './core/store/UserData/user-data.reducer';
+import { authReducer } from './core/store/Auth/auth.reducer';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,6 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideStore({
       userData: userDataReducer,
+      auth: authReducer,
     }),
     provideStoreDevtools({
       maxAge: 25,
