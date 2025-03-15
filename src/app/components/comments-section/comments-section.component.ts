@@ -1,11 +1,18 @@
 // src/app/components/comments-section/comments-section.component.ts
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CommentService } from '../../core/services/comment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Comment } from '../../models';
 import { CommentComponent } from '../comment/comment.component';
+import { Store } from '@ngrx/store';
+import {
+  selectPostComments,
+  selectIsLoading,
+  selectError,
+} from '../../core/store/Comments/comments.selectors';
+import { Observable, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-comments-section',
@@ -14,30 +21,57 @@ import { CommentComponent } from '../comment/comment.component';
   templateUrl: './comments-section.component.html',
   styleUrls: ['./comments-section.component.scss'],
 })
-export class CommentsSectionComponent implements OnInit {
+export class CommentsSectionComponent implements OnInit, OnDestroy {
   @Input() postId!: string;
 
-  comments: Comment[] = [];
-  visibleComments: Comment[] = [];
+  // Use observables from store
+  comments$!: Observable<Comment[]>;
+  isLoading$!: Observable<boolean>;
+  error$!: Observable<string | null>;
+
   newCommentContent: string = '';
-  isLoading = true;
   isLoadingMore = false;
-  error: string | null = null;
 
   // Pagination and sorting
   offset = 0;
   limit = 5; // Initially show top 5 comments
   hasMoreComments = false;
-  sortBy: 'top' | 'recent' = 'top'; // Default sort by top comments
+  sortBy: 'top' | 'recent' = 'recent'; // Default sort by recent comments
+
+  // Track subscriptions
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private commentService: CommentService,
-    private authService: AuthService
+    private authService: AuthService,
+    private store: Store
   ) {}
 
   ngOnInit(): void {
+    // Initialize observables from store selectors
+    this.isLoading$ = this.store.select(selectIsLoading);
+    this.error$ = this.store.select(selectError);
+
+    // Set initial sort order and load comments
     this.setSortBy('recent');
     this.loadComments();
+
+    // Subscribe to comment count to determine if more comments can be loaded
+    this.subscriptions.push(
+      this.comments$.subscribe((comments) => {
+        // If we received exactly the number of comments we requested,
+        // there are probably more
+        this.hasMoreComments = comments.length >= this.limit;
+
+        // Update offset for potential future loads
+        this.offset = comments.length;
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    // Unsubscribe from all subscriptions
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
 
   get isLoggedIn(): boolean {
@@ -55,35 +89,14 @@ export class CommentsSectionComponent implements OnInit {
     if (this.sortBy !== sort) {
       this.sortBy = sort;
       this.offset = 0;
-      this.visibleComments = [];
       this.loadComments();
     }
   }
 
   loadComments(): void {
-    this.isLoading = true;
-    this.error = null;
-
     this.commentService
-      .getPostComments(this.postId, this.limit, this.offset, this.sortBy)
-      .subscribe({
-        next: (comments) => {
-          this.visibleComments = comments;
-
-          // Check if there are more comments to load
-          this.hasMoreComments = comments.length >= this.limit;
-
-          // Update offset for next page
-          this.offset = comments.length;
-
-          this.isLoading = false;
-        },
-        error: (err) => {
-          console.error('Error loading comments:', err);
-          this.error = 'Failed to load comments. Please try again.';
-          this.isLoading = false;
-        },
-      });
+      .getPostComments(this.postId, this.limit, 0, this.sortBy)
+      .subscribe(); // No need to handle the response as it will be in the store
   }
 
   // Load more comments (pagination)
@@ -98,21 +111,10 @@ export class CommentsSectionComponent implements OnInit {
         this.sortBy
       )
       .subscribe({
-        next: (moreComments) => {
-          // Add to existing comments
-          this.visibleComments = [...this.visibleComments, ...moreComments];
-
-          // Check if there are more comments to load
-          this.hasMoreComments = moreComments.length >= 30;
-
-          // Update offset for next page
-          this.offset += moreComments.length;
-
+        complete: () => {
           this.isLoadingMore = false;
         },
-        error: (err) => {
-          console.error('Error loading more comments:', err);
-          this.error = 'Failed to load more comments. Please try again.';
+        error: () => {
           this.isLoadingMore = false;
         },
       });
@@ -128,21 +130,19 @@ export class CommentsSectionComponent implements OnInit {
     this.commentService
       .createComment(this.postId, this.newCommentContent.trim())
       .subscribe({
-        next: (comment) => {
-          // Add new comment to the beginning of visible comments
-          this.visibleComments.unshift(comment);
+        next: () => {
+          // Comment is added to store through the service
           this.newCommentContent = '';
         },
         error: (err) => {
           console.error('Error creating comment:', err);
-          this.error = 'Failed to post comment. Please try again.';
         },
       });
   }
 
+  // This method is still needed for component interaction
   handleCommentDeleted(commentId: string): void {
-    this.visibleComments = this.visibleComments.filter(
-      (c) => c.id !== commentId
-    );
+    // The deleted comment will be removed from the store automatically
+    // through the service and real-time updates, so no action needed here
   }
 }
