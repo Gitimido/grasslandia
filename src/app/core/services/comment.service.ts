@@ -5,7 +5,14 @@ import {
   SupabaseClient,
   RealtimeChannel,
 } from '@supabase/supabase-js';
-import { Observable, from, throwError, of, forkJoin } from 'rxjs';
+import {
+  Observable,
+  from,
+  throwError,
+  of,
+  forkJoin,
+  BehaviorSubject,
+} from 'rxjs';
 import { map, catchError, switchMap, finalize, tap } from 'rxjs/operators';
 import { environment } from '../../../environment';
 import { AuthService } from './auth.service';
@@ -25,6 +32,10 @@ import {
 export class CommentService implements OnDestroy {
   private supabase: SupabaseClient;
   private commentsSubscription: RealtimeChannel | null = null;
+  private votesSubscription: RealtimeChannel | null = null;
+
+  // Track loaded comments for better state management
+  private loadedCommentIds = new Set<string>();
 
   constructor(private authService: AuthService, private store: Store) {
     this.supabase = createClient(
@@ -46,78 +57,69 @@ export class CommentService implements OnDestroy {
     this.cleanupSubscription();
   }
 
-  // Setup real-time subscription for comments
   private setupRealtimeSubscription(): void {
     // Clean up existing subscription
     this.cleanupSubscription();
 
     // Subscribe to comments table changes
     this.commentsSubscription = this.supabase
-      .channel('comments-changes')
+      .channel('comments-public')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen for all changes (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'comments',
+          // No filters - listen to all comment changes
         },
         (payload) => {
-          console.log('Comment created:', payload);
-          // Map to comment model and dispatch action
-          const newComment = this.mapCommentFromPayload(payload.new);
-          this.store.dispatch(
-            CommentsActions.commentAdded({ comment: newComment })
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'comments',
-        },
-        (payload) => {
-          console.log('Comment updated:', payload);
-          const updatedComment = this.mapCommentFromPayload(payload.new);
-          this.store.dispatch(
-            CommentsActions.commentUpdated({ comment: updatedComment })
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'comments',
-        },
-        (payload) => {
-          console.log('Comment deleted:', payload);
-          this.store.dispatch(
-            CommentsActions.commentDeleted({
-              commentId: payload.old['id'],
-              postId: payload.old['post_id'],
-              parentId: payload.old['parent_id'],
-            })
-          );
-        }
-      )
-      .subscribe();
+          console.log('Comment change detected:', payload);
 
-    // Also subscribe to comment_votes for real-time voting
-    this.supabase
-      .channel('comment-votes-changes')
+          if (payload.eventType === 'INSERT') {
+            // Get additional user data for the comment
+            this.enrichCommentWithUserData(payload.new).subscribe((comment) => {
+              // Track this comment as loaded
+              this.loadedCommentIds.add(comment.id);
+
+              // Dispatch to store
+              this.store.dispatch(CommentsActions.commentAdded({ comment }));
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            // Get additional user data for the comment
+            this.enrichCommentWithUserData(payload.new).subscribe((comment) => {
+              this.store.dispatch(CommentsActions.commentUpdated({ comment }));
+            });
+          } else if (payload.eventType === 'DELETE') {
+            this.store.dispatch(
+              CommentsActions.commentDeleted({
+                commentId: payload.old['id'],
+                postId: payload.old['post_id'],
+                parentId: payload.old['parent_id'],
+              })
+            );
+
+            // Remove from tracking
+            this.loadedCommentIds.delete(payload.old['id']);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Comments channel status:', status);
+      });
+
+    // Also subscribe to comment_votes for real-time voting updates
+    this.votesSubscription = this.supabase
+      .channel('comment-votes-public')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'comment_votes',
+          // No filters - listen to all vote changes
         },
         (payload) => {
-          // When votes change, we don't have enough information in the payload
-          // to update vote counts directly. Instead, fetch the new vote counts for the comment.
+          console.log('Vote change detected:', payload);
           const commentId =
             payload.new && 'comment_id' in payload.new
               ? payload.new['comment_id']
@@ -145,7 +147,9 @@ export class CommentService implements OnDestroy {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Votes channel status:', status);
+      });
   }
 
   private cleanupSubscription(): void {
@@ -153,19 +157,54 @@ export class CommentService implements OnDestroy {
       this.supabase.removeChannel(this.commentsSubscription);
       this.commentsSubscription = null;
     }
+
+    if (this.votesSubscription) {
+      this.supabase.removeChannel(this.votesSubscription);
+      this.votesSubscription = null;
+    }
+
+    // Reset tracking
+    this.loadedCommentIds.clear();
   }
 
-  // Helper to map Supabase comment data to Comment model
-  private mapCommentFromPayload(data: any): any {
-    return {
-      id: data['id'],
-      userId: data['user_id'],
-      postId: data['post_id'],
-      parentId: data['parent_id'],
-      content: data['content'],
-      createdAt: new Date(data['created_at']),
-      updatedAt: new Date(data['updated_at']),
-    };
+  // Helper to enrich a comment with user data
+  private enrichCommentWithUserData(commentData: any): Observable<any> {
+    // For safety, check if we have the necessary data
+    if (!commentData || !commentData.user_id) {
+      console.error('Invalid comment data:', commentData);
+      return of(null);
+    }
+
+    return from(
+      this.supabase
+        .from('users')
+        .select('id, username, full_name, avatar_url, email')
+        .eq('id', commentData.user_id)
+        .single()
+        .then(
+          ({ data: userData, error }) => {
+            if (error) {
+              console.error('Error fetching user data for comment:', error);
+              // Return a basic comment even without user data
+              return this.mapComment({
+                ...commentData,
+                users: null,
+              });
+            }
+
+            // Return comment with user data
+            return this.mapComment({
+              ...commentData,
+              users: userData,
+            });
+          },
+          (error: any) => {
+            console.error('Error in enrichCommentWithUserData:', error);
+            // Return a basic comment as fallback
+            return this.mapComment(commentData);
+          }
+        )
+    );
   }
 
   // Fetch a single comment by ID
@@ -222,35 +261,50 @@ export class CommentService implements OnDestroy {
     return from(
       this.supabase.from('comments').insert(commentData).select('*')
     ).pipe(
-      map(({ data, error }) => {
+      switchMap(({ data, error }) => {
         if (error) throw error;
         if (!data || data.length === 0) {
           throw new Error('Failed to create comment');
         }
 
-        // Create userData object with proper types
-        const userData: ICommentUser = {
-          id: userId,
-          username: this.getUsernameFromAuth() || 'User',
-          fullName: this.getFullNameFromAuth() || '',
-          avatarUrl: this.getAvatarUrlFromAuth() || '',
-          email: this.authService.user?.email || '',
-        };
+        // Now fetch user data to include with the comment
+        return from(
+          this.supabase
+            .from('users')
+            .select('id, username, full_name, avatar_url, email')
+            .eq('id', userId)
+            .single()
+        ).pipe(
+          map(({ data: userData, error: userError }) => {
+            if (userError) throw userError;
 
-        // Map the data to a comment with the user data
-        const newComment = this.mapComment({
-          ...data[0],
-          users: userData, // Using 'users' to match expected format in mapComment
-        });
+            // Create userData object with proper types
+            const commentUser: ICommentUser = {
+              id: userId,
+              username:
+                userData?.username || this.getUsernameFromAuth() || 'User',
+              fullName: userData?.full_name || this.getFullNameFromAuth() || '',
+              avatarUrl:
+                userData?.avatar_url || this.getAvatarUrlFromAuth() || '',
+              email: userData?.email || this.authService.user?.email || '',
+            };
 
-        // Dispatch success action with created comment
-        this.store.dispatch(
-          CommentsActions.createCommentSuccess({
-            comment: newComment,
+            // Map the data to a comment with the user data
+            const newComment = this.mapComment({
+              ...data[0],
+              users: commentUser,
+            });
+
+            // Dispatch success action with created comment
+            this.store.dispatch(
+              CommentsActions.createCommentSuccess({
+                comment: newComment,
+              })
+            );
+
+            return newComment;
           })
         );
-
-        return newComment;
       }),
       catchError((error) => {
         console.error('Error creating comment:', error);
@@ -281,7 +335,7 @@ export class CommentService implements OnDestroy {
 
     // Determine sort order based on parameter
     const sortOrder = sortBy === 'top' ? 'score' : 'created_at';
-    const direction = sortBy === 'top' ? 'desc' : 'desc'; // Newer first for 'recent'
+    const direction = 'desc'; // Always show newest first for better UX
 
     return from(
       this.supabase
@@ -296,7 +350,11 @@ export class CommentService implements OnDestroy {
         if (error) throw error;
         if (!data || data.length === 0) return [];
 
-        const comments = data.map((comment) => this.mapComment(comment));
+        const comments = data.map((comment) => {
+          // Track this comment as loaded
+          this.loadedCommentIds.add(comment.id);
+          return this.mapComment(comment);
+        });
 
         // Dispatch success action
         this.store.dispatch(
@@ -324,7 +382,7 @@ export class CommentService implements OnDestroy {
   }
 
   /**
-   * Get comment replies (now using store)
+   * Get comment replies with improved error handling and tracking
    */
   getCommentReplies(
     commentId: string,
@@ -335,47 +393,77 @@ export class CommentService implements OnDestroy {
     // Dispatch action to load replies
     this.store.dispatch(CommentsActions.loadReplies({ commentId }));
 
-    // Use created_at as the default sort order since score column doesn't exist
-    const sortOrder = 'created_at';
-    // For recent comments, we typically want newest first
+    const sortOrder = sortBy === 'top' ? 'score' : 'created_at';
     const ascending = false; // descending order (newest first)
 
+    console.log(
+      `Fetching replies for comment ${commentId}, limit: ${limit}, offset: ${offset}`
+    );
+
     return from(
+      // Use promise-based approach for better error handling
       this.supabase
         .from('comments')
         .select('*, users:user_id(*)')
         .eq('parent_id', commentId)
         .order(sortOrder, { ascending })
         .range(offset, offset + limit - 1)
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        if (!data || data.length === 0) return [];
+        .then(
+          ({ data, error }) => {
+            if (error) {
+              console.error('Supabase error fetching replies:', error);
+              throw error;
+            }
 
-        const replies = data.map((comment) => this.mapComment(comment));
+            if (!data || data.length === 0) {
+              console.log(`No replies found for comment ${commentId}`);
+              // Still dispatch success with empty array
+              this.store.dispatch(
+                CommentsActions.loadRepliesSuccess({
+                  commentId,
+                  replies: [],
+                })
+              );
+              return [];
+            }
 
-        // Dispatch success action
-        this.store.dispatch(
-          CommentsActions.loadRepliesSuccess({
-            commentId,
-            replies,
-          })
-        );
+            console.log(
+              `Found ${data.length} replies for comment ${commentId}`
+            );
 
-        return replies;
-      }),
-      catchError((error) => {
-        console.error('Error fetching comment replies:', error);
+            // Process the replies
+            const replies = data.map((comment) => {
+              // Track this comment as loaded
+              this.loadedCommentIds.add(comment.id);
+              return this.mapComment(comment);
+            });
 
-        // Dispatch failure action
-        this.store.dispatch(
-          CommentsActions.loadRepliesFailure({
-            error: 'Failed to load replies',
-          })
-        );
+            // Dispatch success action
+            this.store.dispatch(
+              CommentsActions.loadRepliesSuccess({
+                commentId,
+                replies,
+              })
+            );
 
-        return of([]);
-      })
+            return replies;
+          },
+          (error) => {
+            console.error(
+              `Error fetching replies for comment ${commentId}:`,
+              error
+            );
+
+            // Dispatch failure action
+            this.store.dispatch(
+              CommentsActions.loadRepliesFailure({
+                error: 'Failed to load replies',
+              })
+            );
+
+            return [];
+          }
+        )
     );
   }
 
@@ -506,6 +594,9 @@ export class CommentService implements OnDestroy {
             ).pipe(
               map(({ error }) => {
                 if (error) throw error;
+
+                // Remove from our tracking
+                this.loadedCommentIds.delete(commentId);
 
                 // Dispatch success action
                 this.store.dispatch(

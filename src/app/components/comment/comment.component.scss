@@ -734,3 +734,69 @@
     }
   }
 }
+
+/* Improve loading spinner */
+.loading-replies {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  margin-top: 8px;
+
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #f0f2f5;
+    border-top: 2px solid #1876f2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  span {
+    font-size: 13px;
+    color: #65676b;
+  }
+}
+
+/* No replies message */
+.no-replies {
+  padding: 12px;
+  text-align: center;
+  color: #65676b;
+  font-size: 13px;
+  background-color: #f0f2f5;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Improve animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Better disabled state for buttons */
+.submit-btn:disabled,
+.save-btn:disabled,
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #9cb4d8;
+}
+
+/* Add transition for smoother UI */
+.replies {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Improve reply section spacing */
+.replies app-comment {
+  margin-top: 8px;
+  display: block;
+}

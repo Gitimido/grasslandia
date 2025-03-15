@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import { CommentsState, initialCommentsState, Comment } from './comments.state';
+import { CommentsState, initialCommentsState } from './comments.state';
 import * as CommentsActions from './comments.actions';
 
 export const commentsReducer = createReducer(
@@ -94,7 +94,7 @@ export const commentsReducer = createReducer(
     const newState = { ...state, isLoading: false };
 
     // Update in byPost if present
-    if (state.byPost[comment.postId]) {
+    if (comment.postId && state.byPost[comment.postId]) {
       newState.byPost = {
         ...state.byPost,
         [comment.postId]: state.byPost[comment.postId].map((c) =>
@@ -133,7 +133,7 @@ export const commentsReducer = createReducer(
       const newState = { ...state, isLoading: false };
 
       // Remove from byPost if present
-      if (state.byPost[postId]) {
+      if (postId && state.byPost[postId]) {
         newState.byPost = {
           ...state.byPost,
           [postId]: state.byPost[postId].filter((c) => c.id !== commentId),
@@ -148,6 +148,13 @@ export const commentsReducer = createReducer(
             (c) => c.id !== commentId
           ),
         };
+      }
+
+      // Also remove any replies to this comment
+      // This is important: we need to remove the parent's entries when the parent is deleted
+      if (state.byParent[commentId]) {
+        const { [commentId]: _, ...remainingParents } = state.byParent;
+        newState.byParent = remainingParents;
       }
 
       return newState;
@@ -170,6 +177,12 @@ export const commentsReducer = createReducer(
     if (!comment.parentId) {
       // Top-level comment
       const postComments = state.byPost[comment.postId] || [];
+
+      // Avoid duplicate comments
+      if (postComments.some((c) => c.id === comment.id)) {
+        return state;
+      }
+
       return {
         ...state,
         byPost: {
@@ -180,6 +193,12 @@ export const commentsReducer = createReducer(
     } else {
       // Reply
       const parentReplies = state.byParent[comment.parentId] || [];
+
+      // Avoid duplicate replies
+      if (parentReplies.some((c) => c.id === comment.id)) {
+        return state;
+      }
+
       return {
         ...state,
         byParent: {
@@ -194,7 +213,7 @@ export const commentsReducer = createReducer(
     const newState = { ...state };
 
     // Update in byPost if present
-    if (state.byPost[comment.postId]) {
+    if (comment.postId && state.byPost[comment.postId]) {
       newState.byPost = {
         ...state.byPost,
         [comment.postId]: state.byPost[comment.postId].map((c) =>
@@ -221,7 +240,7 @@ export const commentsReducer = createReducer(
       const newState = { ...state };
 
       // Remove from byPost if present
-      if (state.byPost[postId]) {
+      if (postId && state.byPost[postId]) {
         newState.byPost = {
           ...state.byPost,
           [postId]: state.byPost[postId].filter((c) => c.id !== commentId),
@@ -236,6 +255,12 @@ export const commentsReducer = createReducer(
             (c) => c.id !== commentId
           ),
         };
+      }
+
+      // Also remove any replies to this comment
+      if (state.byParent[commentId]) {
+        const { [commentId]: _, ...remainingParents } = state.byParent;
+        newState.byParent = remainingParents;
       }
 
       return newState;

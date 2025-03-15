@@ -1,10 +1,16 @@
 // src/app/components/comments-section/comments-section.component.ts
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnInit,
+  OnDestroy,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CommentService } from '../../core/services/comment.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Comment, VoteType, IComment } from '../../models';
+import { Comment } from '../../models';
 import { CommentComponent } from '../comment/comment.component';
 import { Store } from '@ngrx/store';
 import {
@@ -14,7 +20,6 @@ import {
 } from '../../core/store/Comments/comments.selectors';
 import { Observable, Subscription } from 'rxjs';
 import { RouterModule } from '@angular/router';
-import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-comments-section',
@@ -41,7 +46,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
 
   // Pagination and sorting
   offset = 0;
-  limit = 5; // Initially show top 5 comments
+  limit = 10; // Initially show top 10 comments
   hasMoreComments = false;
   sortBy: 'top' | 'recent' = 'recent'; // Default sort by recent comments
 
@@ -51,24 +56,17 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
   constructor(
     private commentService: CommentService,
     private authService: AuthService,
-    private store: Store
+    private store: Store,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     // Initialize observables from store selectors
     this.isLoading$ = this.store.select(selectIsLoading);
     this.error$ = this.store.select(selectError);
-
-    this.comments$ = this.store
-      .select(selectPostComments(this.postId))
-      .pipe(
-        map((comments) =>
-          comments.map(
-            (storeComment) =>
-              new Comment(this.convertStoreCommentToIComment(storeComment))
-          )
-        )
-      );
+    this.comments$ = this.store.select(
+      selectPostComments(this.postId)
+    ) as Observable<Comment[]>;
 
     // Set initial sort order and load comments
     this.setSortBy('recent');
@@ -78,6 +76,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.isLoading$.subscribe((loading) => {
         this.isLoading = loading;
+        this.cdr.markForCheck();
       })
     );
 
@@ -92,6 +91,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
 
         // Update offset for potential future loads
         this.offset = comments.length;
+        this.cdr.markForCheck();
       })
     );
 
@@ -99,39 +99,13 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.error$.subscribe((errorMsg) => {
         this.error = errorMsg || undefined;
+        this.cdr.markForCheck();
       })
     );
   }
 
-  private convertStoreCommentToIComment(storeComment: any): IComment {
-    // Create a new object with the correct structure
-    const convertedComment: IComment = {
-      id: storeComment.id,
-      userId: storeComment.userId,
-      postId: storeComment.postId,
-      parentId: storeComment.parentId,
-      content: storeComment.content,
-      createdAt: storeComment.createdAt,
-      updatedAt: storeComment.updatedAt,
-      user: storeComment.user,
-      upvotes: storeComment.upvotes,
-      downvotes: storeComment.downvotes,
-      score: storeComment.score,
-      userVote: null,
-    };
-
-    // Explicitly convert the string vote type to enum
-    if (storeComment.userVote === 'upvote') {
-      convertedComment.userVote = VoteType.UPVOTE;
-    } else if (storeComment.userVote === 'downvote') {
-      convertedComment.userVote = VoteType.DOWNVOTE;
-    }
-
-    return convertedComment;
-  }
-
   ngOnDestroy(): void {
-    // Unsubscribe from all subscriptions
+    // Clean up all subscriptions
     this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
 
@@ -157,11 +131,18 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
   loadComments(): void {
     this.commentService
       .getPostComments(this.postId, this.limit, 0, this.sortBy)
-      .subscribe(); // No need to handle the response as it will be in the store
+      .subscribe({
+        // The store will be updated by the service, no need to handle the response here
+        error: (err) => {
+          console.error('Error loading comments:', err);
+        },
+      });
   }
 
   // Load more comments (pagination)
   loadMoreComments(): void {
+    if (this.isLoadingMore) return;
+
     this.isLoadingMore = true;
 
     this.commentService
@@ -172,11 +153,15 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
         this.sortBy
       )
       .subscribe({
-        complete: () => {
+        next: (additionalComments) => {
+          this.hasMoreComments = additionalComments.length >= 30;
           this.isLoadingMore = false;
+          this.cdr.markForCheck();
         },
-        error: () => {
+        error: (err) => {
+          console.error('Error loading more comments:', err);
           this.isLoadingMore = false;
+          this.cdr.markForCheck();
         },
       });
   }
@@ -194,6 +179,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
         next: () => {
           // Comment is added to store through the service
           this.newCommentContent = '';
+          this.cdr.markForCheck();
         },
         error: (err) => {
           console.error('Error creating comment:', err);
@@ -201,9 +187,12 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
       });
   }
 
-  // This method is still needed for component interaction
   handleCommentDeleted(commentId: string): void {
     // The deleted comment will be removed from the store automatically
-    // through the service and real-time updates, so no action needed here
+    // We just need to ensure our local state is updated
+    this.visibleComments = this.visibleComments.filter(
+      (c) => c.id !== commentId
+    );
+    this.cdr.markForCheck();
   }
 }

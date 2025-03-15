@@ -41,8 +41,6 @@
     </div>
 
     <div class="comment-body">
-
-
         <!-- Display mode -->
         <div class="comment-content" *ngIf="!isEditing">
             {{ comment.content }}
@@ -116,7 +114,7 @@
         </div>
 
         <!-- Replies list - only shown once loaded -->
-        <div *ngIf="!isLoadingReplies">
+        <div *ngIf="!isLoadingReplies && visibleReplies.length > 0">
             <app-comment *ngFor="let reply of visibleReplies" [comment]="reply" [isReply]="true"
                 [replyDepth]="replyDepth + 1" [replyingToUsername]="comment.user?.username"
                 (deleted)="handleCommentDeleted($event)">
@@ -129,6 +127,11 @@
                     <span *ngIf="isLoadingMoreReplies">Loading...</span>
                 </button>
             </div>
+        </div>
+
+        <!-- Empty replies message -->
+        <div class="no-replies" *ngIf="!isLoadingReplies && visibleReplies.length === 0 && repliesLoaded">
+            <p>No replies yet. Be the first to reply!</p>
         </div>
     </div>
 </div>
