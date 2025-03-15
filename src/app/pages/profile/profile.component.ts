@@ -15,7 +15,7 @@ import { CreatePostComponent } from '../../components/create-post/create-post.co
 import { PostCardComponent } from '../../components/post-card/post-card.component';
 import { FeedStyle } from '../../components/feed/feed-styles.enum';
 import { SideNavService } from '../../core/services/side-nav.service';
-import { Observable, of, switchMap, finalize } from 'rxjs';
+import { Observable, of, switchMap, finalize, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -39,6 +39,8 @@ export class ProfileComponent implements OnInit {
   isCurrentUser = false;
   isSidebarCollapsed = false;
 
+  friendshipStatusSubscription: Subscription | null = null;
+
   // Expose FriendshipStatus enum to the template
   FriendshipStatus = FriendshipStatus;
 
@@ -47,6 +49,7 @@ export class ProfileComponent implements OnInit {
   friendshipId: string | null = null;
   isInitiator = false;
   isFriendActionLoading = false;
+  private sidebarSubscription: Subscription | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -58,11 +61,16 @@ export class ProfileComponent implements OnInit {
     private sideNavService: SideNavService
   ) {}
 
+  // src/app/pages/profile/profile.component.ts
+  // Only showing the modified parts
+
   ngOnInit(): void {
     // Track sidebar state
-    this.sideNavService.sidebarState.subscribe((state) => {
-      this.isSidebarCollapsed = state;
-    });
+    this.sidebarSubscription = this.sideNavService.sidebarState.subscribe(
+      (state) => {
+        this.isSidebarCollapsed = state;
+      }
+    );
 
     // Get username from route params
     this.route.paramMap
@@ -104,6 +112,24 @@ export class ProfileComponent implements OnInit {
 
             // Check friendship status if not current user
             if (!this.isCurrentUser && this.authService.isAuthenticated()) {
+              // Subscribe to friendship status changes for this user
+              this.friendshipStatusSubscription =
+                this.friendshipService.friendshipsByUserId$.subscribe(
+                  (friendshipMap) => {
+                    if (this.profile && friendshipMap.has(this.profile.id)) {
+                      const status = friendshipMap.get(this.profile.id)!;
+                      this.friendshipStatus = status.status;
+                      this.friendshipId = status.id;
+                      this.isInitiator = status.initiatedByMe;
+                    } else if (this.profile) {
+                      this.friendshipStatus = null;
+                      this.friendshipId = null;
+                      this.isInitiator = false;
+                    }
+                  }
+                );
+
+              // Initial check
               this.checkFriendshipStatus(user.id);
             }
           } else {

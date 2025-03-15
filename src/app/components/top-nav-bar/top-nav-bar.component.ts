@@ -5,10 +5,11 @@ import { RouterModule } from '@angular/router';
 import {
   FriendshipService,
   FriendshipStatus,
+  Friendship,
 } from '../../core/services/friendship.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Subscription, interval } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { Notification } from '../../models';
 
 interface FriendItem {
@@ -50,7 +51,7 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
   actionLoading: { [key: string]: boolean } = {};
 
   // Subscriptions
-  private checkCountsSubscription?: Subscription;
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private friendshipService: FriendshipService,
@@ -59,14 +60,60 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Only start polling for counts if user is logged in
+    // Only setup subscriptions if user is logged in
     if (this.authService.isAuthenticated()) {
-      this.startPeriodicChecks();
+      // Subscribe to pending friend requests
+      this.subscriptions.push(
+        this.friendshipService.pendingFriendRequests$.subscribe((requests) => {
+          this.friendRequests = requests.map((req) => ({
+            id: req.id,
+            username: req.users?.username || 'User',
+            fullName: req.users?.full_name || '',
+            avatarUrl: req.users?.avatar_url,
+            status: req.status,
+            timestamp: new Date(req.created_at),
+          }));
+          this.friendRequestCount = this.friendRequests.length;
+          this.isFriendsLoading = false;
+        })
+      );
+
+      // Subscribe to current friends
+      this.subscriptions.push(
+        this.friendshipService.friends$.subscribe((friendIds) => {
+          // For now just create placeholder objects with IDs
+          // In a real implementation, you'd fetch user details for each friend ID
+          this.currentFriends = friendIds.map((id) => ({
+            id,
+            username: 'friend_' + id.substring(0, 5),
+            fullName: 'Friend User',
+            status: FriendshipStatus.ACCEPTED,
+          }));
+          this.isFriendsLoading = false;
+        })
+      );
+
+      // Subscribe to notifications
+      this.subscriptions.push(
+        this.notificationService.notifications$.subscribe((notifications) => {
+          this.notifications = notifications;
+          this.isNotificationsLoading = false;
+        })
+      );
+
+      // Subscribe to unread notification count
+      this.subscriptions.push(
+        this.notificationService.unreadCount$.subscribe((count) => {
+          this.notificationCount = count;
+        })
+      );
     }
   }
 
   ngOnDestroy(): void {
-    this.stopPeriodicChecks();
+    // Clean up all subscriptions
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
+    this.subscriptions = [];
   }
 
   // Toggle dropdown visibility
@@ -74,8 +121,6 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
     this.isFriendsDropdownOpen = !this.isFriendsDropdownOpen;
     if (this.isFriendsDropdownOpen) {
       this.isNotificationsDropdownOpen = false; // Close the other dropdown
-      this.loadFriendRequests();
-      this.loadFriends();
     }
   }
 
@@ -83,7 +128,6 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
     this.isNotificationsDropdownOpen = !this.isNotificationsDropdownOpen;
     if (this.isNotificationsDropdownOpen) {
       this.isFriendsDropdownOpen = false; // Close the other dropdown
-      this.loadNotifications();
     }
   }
 
@@ -92,86 +136,32 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
     this.activeFriendsTab = tab;
   }
 
-  // Load friend requests
-  loadFriendRequests(): void {
-    this.isFriendsLoading = true;
-    this.friendshipService.getPendingFriendRequests().subscribe({
-      next: (requests) => {
-        this.friendRequests = requests.map((req) => ({
-          id: req.id,
-          username: req.users?.username || 'User',
-          fullName: req.users?.full_name || '',
-          avatarUrl: req.users?.avatar_url,
-          status: req.status,
-          timestamp: new Date(req.created_at),
-        }));
-        this.friendRequestCount = this.friendRequests.length;
-        this.isFriendsLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading friend requests:', err);
-        this.isFriendsLoading = false;
-      },
-    });
-  }
-
-  // Load current friends
-  loadFriends(): void {
-    this.isFriendsLoading = true;
-    this.friendshipService.getFriends().subscribe({
-      next: (friendIds) => {
-        // For now just create placeholder objects with IDs
-        // In a real implementation, you'd fetch user details for each friend
-        this.currentFriends = friendIds.map((id) => ({
-          id,
-          username: 'friend_' + id.substring(0, 5),
-          fullName: 'Friend User',
-          status: FriendshipStatus.ACCEPTED,
-        }));
-        this.isFriendsLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading friends:', err);
-        this.isFriendsLoading = false;
-      },
-    });
-  }
-
-  // Load notifications
-  loadNotifications(): void {
-    this.isNotificationsLoading = true;
-    this.notificationService.getNotifications(10, 0).subscribe({
-      next: (notifications) => {
-        this.notifications = notifications;
-        this.notificationCount = notifications.filter((n) => !n.read).length;
-        this.isNotificationsLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading notifications:', err);
-        this.isNotificationsLoading = false;
-      },
-    });
-  }
-
-  // Accept a friend request
   acceptFriendRequest(requestId: string): void {
     this.actionLoading[requestId] = true;
 
     this.friendshipService.acceptFriendRequest(requestId).subscribe({
       next: () => {
-        // Remove from requests and add to friends
-        const acceptedRequest = this.friendRequests.find(
-          (req) => req.id === requestId
-        );
-        if (acceptedRequest) {
-          acceptedRequest.status = FriendshipStatus.ACCEPTED;
-          this.currentFriends.push(acceptedRequest);
+        // The operation was successful - we'll let the real-time updates
+        // handle removing the item from the list
+        this.actionLoading[requestId] = false;
+
+        // To ensure immediate UI update, find and remove the request
+        const request = this.friendRequests.find((r) => r.id === requestId);
+        if (request) {
           this.friendRequests = this.friendRequests.filter(
-            (req) => req.id !== requestId
+            (r) => r.id !== requestId
           );
           this.friendRequestCount = this.friendRequests.length;
+
+          // Add to friends list
+          this.currentFriends.push({
+            id: request.id,
+            username: request.username,
+            fullName: request.fullName,
+            avatarUrl: request.avatarUrl,
+            status: FriendshipStatus.ACCEPTED,
+          });
         }
-        this.actionLoading[requestId] = false;
       },
       error: (err) => {
         console.error('Error accepting friend request:', err);
@@ -180,18 +170,18 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Reject a friend request
   rejectFriendRequest(requestId: string): void {
     this.actionLoading[requestId] = true;
 
     this.friendshipService.rejectFriendRequest(requestId).subscribe({
       next: () => {
-        // Remove from requests
+        this.actionLoading[requestId] = false;
+
+        // Immediately remove the request from the UI
         this.friendRequests = this.friendRequests.filter(
-          (req) => req.id !== requestId
+          (r) => r.id !== requestId
         );
         this.friendRequestCount = this.friendRequests.length;
-        this.actionLoading[requestId] = false;
       },
       error: (err) => {
         console.error('Error rejecting friend request:', err);
@@ -203,18 +193,6 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
   // Mark notification as read
   markNotificationAsRead(notificationId: string): void {
     this.notificationService.markAsRead(notificationId).subscribe({
-      next: () => {
-        // Update notification in the list
-        const notification = this.notifications.find(
-          (n) => n.id === notificationId
-        );
-        if (notification) {
-          notification.read = true;
-          this.notificationCount = this.notifications.filter(
-            (n) => !n.read
-          ).length;
-        }
-      },
       error: (err) => {
         console.error('Error marking notification as read:', err);
       },
@@ -254,61 +232,25 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
 
   // Format timestamp to relative time (e.g., "2h ago")
   formatTimeAgo(date: Date): string {
+    // Same time calculation as other models
     const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds}s ago`;
-    }
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + 'y';
 
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`;
-    }
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + 'mo';
 
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    }
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + 'd';
 
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 30) {
-      return `${diffInDays}d ago`;
-    }
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + 'h';
 
-    const diffInMonths = Math.floor(diffInDays / 30);
-    return `${diffInMonths}mo ago`;
-  }
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + 'm';
 
-  private startPeriodicChecks(): void {
-    // Stop any existing subscription
-    this.stopPeriodicChecks();
-
-    // Check counts every 30 seconds
-    this.checkCountsSubscription = interval(30000).subscribe(() => {
-      this.checkCounts();
-    });
-
-    // Initial check
-    this.checkCounts();
-  }
-
-  private stopPeriodicChecks(): void {
-    if (this.checkCountsSubscription) {
-      this.checkCountsSubscription.unsubscribe();
-      this.checkCountsSubscription = undefined;
-    }
-  }
-
-  private checkCounts(): void {
-    // Check notifications
-    this.notificationService.getUnreadCount().subscribe((count) => {
-      this.notificationCount = count;
-    });
-
-    // Check friend requests
-    this.friendshipService.getPendingFriendRequests().subscribe((requests) => {
-      this.friendRequestCount = requests.length;
-    });
+    return Math.floor(seconds) + 's';
   }
 }

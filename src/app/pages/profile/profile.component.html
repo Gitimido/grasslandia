@@ -45,6 +45,7 @@
                     <button *ngIf="isCurrentUser" class="edit-profile-btn" routerLink="/settings">Edit Profile</button>
 
                     <!-- Friend Button - Only show for other users when logged in -->
+                    <!-- Friend Button - Only show for other users when logged in -->
                     <ng-container *ngIf="!isCurrentUser && authService.isAuthenticated()">
                         <!-- Main Friend Button -->
                         <button *ngIf="friendshipStatus !== FriendshipStatus.PENDING || isInitiator" class="friend-btn"
@@ -70,7 +71,6 @@
                             </button>
                         </div>
                     </ng-container>
-
                     <button *ngIf="!isCurrentUser && friendshipStatus === FriendshipStatus.ACCEPTED"
                         class="message-btn">Message</button>
                 </div>

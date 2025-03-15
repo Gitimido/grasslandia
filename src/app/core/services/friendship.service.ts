@@ -1,6 +1,10 @@
 // src/app/core/services/friendship.service.ts
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  SupabaseClient,
+  RealtimeChannel,
+} from '@supabase/supabase-js';
 import { environment } from '../../../environment';
 import {
   Observable,
@@ -10,6 +14,8 @@ import {
   map,
   catchError,
   switchMap,
+  BehaviorSubject,
+  Subject,
 } from 'rxjs';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
@@ -43,6 +49,24 @@ export interface Friendship {
 })
 export class FriendshipService {
   private supabase: SupabaseClient;
+  private friendRequestsSubscription: RealtimeChannel | null = null;
+  private friendshipUpdatesSubscription: RealtimeChannel | null = null;
+
+  // BehaviorSubjects for reactive updates
+  private pendingRequestsSubject = new BehaviorSubject<Friendship[]>([]);
+  private friendsSubject = new BehaviorSubject<string[]>([]);
+
+  // Track all friendships for the current user by other user's ID
+  private friendshipsByUserIdSubject = new BehaviorSubject<
+    Map<
+      string,
+      {
+        status: FriendshipStatus;
+        id: string;
+        initiatedByMe: boolean;
+      }
+    >
+  >(new Map());
 
   constructor(
     private authService: AuthService,
@@ -52,6 +76,179 @@ export class FriendshipService {
       environment.supabaseUrl,
       environment.supabaseKey
     );
+
+    // Setup real-time subscriptions when authenticated
+    this.authService.user$.subscribe((user) => {
+      if (user) {
+        this.setupRealtimeSubscriptions(user.id);
+        // Initial load of data
+        this.loadAllFriendships(user.id);
+      } else {
+        this.cleanupSubscriptions();
+      }
+    });
+  }
+
+  // Load all friendships for the current user
+  private loadAllFriendships(userId: string): void {
+    // Get all friendships where the current user is involved
+    from(
+      this.supabase
+        .from('friendships')
+        .select('*')
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+    ).subscribe({
+      next: ({ data, error }) => {
+        if (error) {
+          console.error('Error loading friendships:', error);
+          return;
+        }
+
+        if (!data) return;
+
+        // Process the friendships
+        this.processFriendships(data, userId);
+      },
+    });
+  }
+
+  // Process and organize friendships data
+  private processFriendships(friendships: any[], currentUserId: string): void {
+    // Clear existing data
+    const friendshipMap = new Map<
+      string,
+      {
+        status: FriendshipStatus;
+        id: string;
+        initiatedByMe: boolean;
+      }
+    >();
+
+    const pendingRequests: Friendship[] = [];
+    const acceptedFriendIds: string[] = [];
+
+    // Process each friendship
+    friendships.forEach((friendship) => {
+      const otherUserId =
+        friendship.user_id === currentUserId
+          ? friendship.friend_id
+          : friendship.user_id;
+
+      const initiatedByMe = friendship.user_id === currentUserId;
+
+      // Store in the map
+      friendshipMap.set(otherUserId, {
+        status: friendship.status,
+        id: friendship.id,
+        initiatedByMe,
+      });
+
+      // Sort into appropriate categories
+      if (friendship.status === FriendshipStatus.PENDING) {
+        // If current user is the recipient, it's a pending request
+        if (!initiatedByMe) {
+          pendingRequests.push(friendship);
+        }
+      } else if (friendship.status === FriendshipStatus.ACCEPTED) {
+        acceptedFriendIds.push(otherUserId);
+      }
+    });
+
+    // Update all relevant subjects
+    this.friendshipsByUserIdSubject.next(friendshipMap);
+    this.friendsSubject.next(acceptedFriendIds);
+
+    // Load user details for pending requests
+    if (pendingRequests.length > 0) {
+      this.loadUserDetailsForRequests(pendingRequests);
+    } else {
+      this.pendingRequestsSubject.next([]);
+    }
+  }
+
+  // Load user details for pending requests
+  private loadUserDetailsForRequests(pendingRequests: any[]): void {
+    const userIds = pendingRequests.map((req) => req.user_id);
+
+    from(
+      this.supabase
+        .from('users')
+        .select('id, username, full_name, avatar_url')
+        .in('id', userIds)
+    ).subscribe({
+      next: ({ data, error }) => {
+        if (error) {
+          console.error('Error loading user details:', error);
+          return;
+        }
+
+        if (!data) return;
+
+        // Create a map of user details
+        const userMap = new Map();
+        data.forEach((user) => {
+          userMap.set(user.id, user);
+        });
+
+        // Enrich pending requests with user details
+        const enrichedRequests = pendingRequests.map((req) => ({
+          ...req,
+          users: userMap.get(req.user_id),
+        }));
+
+        this.pendingRequestsSubject.next(enrichedRequests);
+      },
+    });
+  }
+
+  // New methods for real-time subscriptions
+  private setupRealtimeSubscriptions(userId: string): void {
+    this.cleanupSubscriptions();
+
+    // Subscribe to all friendships involving the current user
+    this.friendRequestsSubscription = this.supabase
+      .channel('friendship-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'friendships',
+          filter: `friend_id=eq.${userId}`, // Filter for requests to this user
+        },
+        (payload) => {
+          console.log('Friendship change (as recipient):', payload);
+          // Reload all friendships when there's a change
+          this.loadAllFriendships(userId);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id=eq.${userId}`, // Filter for requests from this user
+        },
+        (payload) => {
+          console.log('Friendship change (as sender):', payload);
+          // Reload all friendships when there's a change
+          this.loadAllFriendships(userId);
+        }
+      )
+      .subscribe();
+  }
+
+  private cleanupSubscriptions(): void {
+    if (this.friendRequestsSubscription) {
+      this.supabase.removeChannel(this.friendRequestsSubscription);
+      this.friendRequestsSubscription = null;
+    }
+
+    if (this.friendshipUpdatesSubscription) {
+      this.supabase.removeChannel(this.friendshipUpdatesSubscription);
+      this.friendshipUpdatesSubscription = null;
+    }
   }
 
   /**
@@ -111,7 +308,18 @@ export class FriendshipService {
                 resourceType: 'friendship',
                 read: false,
               })
-              .pipe(map(() => data[0] as Friendship));
+              .pipe(
+                map(() => {
+                  // Immediately update local state
+                  this.updateLocalFriendshipState(
+                    friendId,
+                    data[0].id,
+                    FriendshipStatus.PENDING,
+                    true
+                  );
+                  return data[0] as Friendship;
+                })
+              );
           })
         );
       }),
@@ -174,11 +382,18 @@ export class FriendshipService {
             if (!updatedData || updatedData.length === 0)
               throw new Error('Failed to update friendship');
 
+            // Immediately update local state
+            this.updateLocalFriendshipState(
+              data.user_id,
+              friendshipId,
+              FriendshipStatus.ACCEPTED,
+              false
+            );
+
             // Create a notification for the original sender
             return this.notificationService
               .createNotification({
                 userId: data.user_id,
-                // Use the correct notification type that we added
                 type: 'friend_accepted' as 'friend_request', // Type cast to satisfy TS
                 content: 'accepted your friend request',
                 actorId: currentUserId,
@@ -249,6 +464,14 @@ export class FriendshipService {
             if (!updatedData || updatedData.length === 0)
               throw new Error('Failed to update friendship');
 
+            // Immediately update local state
+            this.updateLocalFriendshipState(
+              data.user_id,
+              friendshipId,
+              FriendshipStatus.REJECTED,
+              false
+            );
+
             return updatedData[0] as Friendship;
           })
         );
@@ -265,6 +488,14 @@ export class FriendshipService {
    * @param friendId The ID of the user to unfriend
    * @returns Observable indicating success
    */
+  // src/app/core/services/friendship.service.ts
+  // Fix the removeFriendship method
+
+  /**
+   * Remove a friendship (unfriend)
+   * @param friendId The ID of the user to unfriend
+   * @returns Observable indicating success
+   */
   removeFriendship(friendId: string): Observable<void> {
     const currentUserId = this.authService.user?.id;
 
@@ -274,16 +505,33 @@ export class FriendshipService {
       );
     }
 
-    // Delete any friendship records between these users (in either direction)
+    // First find the friendship record to get its ID
     return from(
       this.supabase
         .from('friendships')
-        .delete()
+        .select('id')
         .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`)
         .or(`user_id.eq.${friendId},friend_id.eq.${friendId}`)
+        .limit(1)
     ).pipe(
+      switchMap(({ data, error }) => {
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Friendship not found');
+        }
+
+        const friendshipId = data[0].id;
+
+        // Now delete the friendship by ID (which is more reliable)
+        return from(
+          this.supabase.from('friendships').delete().eq('id', friendshipId)
+        );
+      }),
       map(({ error }) => {
         if (error) throw error;
+
+        // Immediately update local state
+        this.updateLocalFriendshipState(friendId, '', null, false);
       }),
       catchError((error) => {
         console.error('Error removing friendship:', error);
@@ -291,43 +539,82 @@ export class FriendshipService {
       })
     );
   }
+  // Update local state for immediate UI feedback
+  private updateLocalFriendshipState(
+    otherUserId: string,
+    friendshipId: string,
+    status: FriendshipStatus | null,
+    initiatedByMe: boolean
+  ): void {
+    // Update friendship map
+    const currentMap = this.friendshipsByUserIdSubject.getValue();
+    const newMap = new Map(currentMap);
+
+    if (status === null) {
+      // Remove friendship
+      newMap.delete(otherUserId);
+    } else {
+      // Add or update friendship
+      newMap.set(otherUserId, { status, id: friendshipId, initiatedByMe });
+    }
+
+    this.friendshipsByUserIdSubject.next(newMap);
+
+    // Update friends list if needed
+    if (status === FriendshipStatus.ACCEPTED) {
+      const currentFriends = this.friendsSubject.getValue();
+      if (!currentFriends.includes(otherUserId)) {
+        this.friendsSubject.next([...currentFriends, otherUserId]);
+      }
+    } else {
+      // Changed this part - status could be null, so separate the condition
+      const currentFriends = this.friendsSubject.getValue();
+      this.friendsSubject.next(
+        currentFriends.filter((id) => id !== otherUserId)
+      );
+    }
+
+    // Update pending requests if needed
+    if (status === FriendshipStatus.PENDING && !initiatedByMe) {
+      // This is a new pending request to current user, but we'll let the real-time
+      // subscription handle the details loading to avoid redundancy
+    } else {
+      // Remove from pending requests if it was there
+      const currentRequests = this.pendingRequestsSubject.getValue();
+      this.pendingRequestsSubject.next(
+        currentRequests.filter((req) => req.user_id !== otherUserId)
+      );
+    }
+  }
 
   /**
    * Get all friends of the current user
    * @returns Observable with array of user ids who are friends
    */
   getFriends(): Observable<string[]> {
-    const currentUserId = this.authService.user?.id;
+    return this.friendsSubject.asObservable();
+  }
 
-    if (!currentUserId) {
-      return of([]);
-    }
+  // Expose BehaviorSubjects as Observables
+  get pendingFriendRequests$(): Observable<Friendship[]> {
+    return this.pendingRequestsSubject.asObservable();
+  }
 
-    // Get friendships where the current user is either the sender or recipient
-    // and the status is accepted
-    return from(
-      this.supabase
-        .from('friendships')
-        .select('user_id, friend_id')
-        .eq('status', FriendshipStatus.ACCEPTED)
-        .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`)
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        if (!data || data.length === 0) return [];
+  get friends$(): Observable<string[]> {
+    return this.friendsSubject.asObservable();
+  }
 
-        // Map to an array of friend IDs (excluding the current user)
-        return data.map((friendship) =>
-          friendship.user_id === currentUserId
-            ? friendship.friend_id
-            : friendship.user_id
-        );
-      }),
-      catchError((error) => {
-        console.error('Error fetching friends:', error);
-        return of([]);
-      })
-    );
+  get friendshipsByUserId$(): Observable<
+    Map<
+      string,
+      {
+        status: FriendshipStatus;
+        id: string;
+        initiatedByMe: boolean;
+      }
+    >
+  > {
+    return this.friendshipsByUserIdSubject.asObservable();
   }
 
   /**
@@ -335,37 +622,7 @@ export class FriendshipService {
    * @returns Observable with array of friendships with user data
    */
   getPendingFriendRequests(): Observable<Friendship[]> {
-    const currentUserId = this.authService.user?.id;
-
-    if (!currentUserId) {
-      return of([]);
-    }
-
-    // Get friendships where the current user is the recipient
-    // and the status is pending, include the sender's user data
-    return from(
-      this.supabase
-        .from('friendships')
-        .select(
-          `
-          *,
-          users:user_id(id, username, full_name, avatar_url)
-        `
-        )
-        .eq('friend_id', currentUserId)
-        .eq('status', FriendshipStatus.PENDING)
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        if (!data || data.length === 0) return [];
-
-        return data as Friendship[];
-      }),
-      catchError((error) => {
-        console.error('Error fetching pending friend requests:', error);
-        return of([]);
-      })
-    );
+    return this.pendingFriendRequests$;
   }
 
   /**
@@ -378,40 +635,12 @@ export class FriendshipService {
     id: string;
     initiatedByMe: boolean;
   } | null> {
-    const currentUserId = this.authService.user?.id;
-
-    if (!currentUserId) {
-      return of(null);
-    }
-
-    if (currentUserId === friendId) {
-      return of(null); // Can't be friends with yourself
-    }
-
-    // Check if any friendship exists between these users
-    return from(
-      this.supabase
-        .from('friendships')
-        .select('*')
-        .or(
-          `and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`
-        )
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        if (!data || data.length === 0) return null;
-
-        // Return the friendship details
-        const friendship = data[0];
-        return {
-          status: friendship.status as FriendshipStatus,
-          id: friendship.id,
-          initiatedByMe: friendship.user_id === currentUserId,
-        };
-      }),
-      catchError((error) => {
-        console.error('Error checking friendship status:', error);
-        return of(null);
+    return this.friendshipsByUserId$.pipe(
+      map((friendshipMap) => {
+        if (friendshipMap.has(friendId)) {
+          return friendshipMap.get(friendId)!;
+        }
+        return null;
       })
     );
   }

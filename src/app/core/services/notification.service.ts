@@ -1,8 +1,13 @@
 // src/app/core/services/notification.service.ts
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  SupabaseClient,
+  RealtimeChannel,
+} from '@supabase/supabase-js';
+
 import { environment } from '../../../environment';
-import { Observable, from, throwError, of } from 'rxjs';
+import { Observable, from, throwError, of, BehaviorSubject } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { Notification, INotification } from '../../models';
@@ -12,12 +17,66 @@ import { Notification, INotification } from '../../models';
 })
 export class NotificationService {
   private supabase: SupabaseClient;
+  private notificationsSubscription: RealtimeChannel | null = null;
+
+  // BehaviorSubject for reactive notifications
+  private notificationsSubject = new BehaviorSubject<Notification[]>([]);
+  private unreadCountSubject = new BehaviorSubject<number>(0);
 
   constructor(private authService: AuthService) {
     this.supabase = createClient(
       environment.supabaseUrl,
       environment.supabaseKey
     );
+
+    // Subscribe to auth changes to setup/teardown realtime subscriptions
+    this.authService.user$.subscribe((user) => {
+      if (user) {
+        this.setupRealtimeSubscription(user.id);
+        // Initial load
+        this.loadNotifications();
+      } else {
+        this.cleanupSubscription();
+      }
+    });
+  }
+
+  // Setup realtime subscription for notifications
+  private setupRealtimeSubscription(userId: string): void {
+    this.cleanupSubscription();
+
+    this.notificationsSubscription = this.supabase
+      .channel('public:notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all changes
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`, // Only notifications for this user
+        },
+        (payload) => {
+          console.log('Notification change:', payload);
+          // Reload notifications on change
+          this.loadNotifications();
+        }
+      )
+      .subscribe();
+  }
+
+  private cleanupSubscription(): void {
+    if (this.notificationsSubscription) {
+      this.supabase.removeChannel(this.notificationsSubscription);
+      this.notificationsSubscription = null;
+    }
+  }
+
+  // Load notifications and update subjects
+  private loadNotifications(): void {
+    this.getNotifications(20, 0).subscribe((notifications) => {
+      this.notificationsSubject.next(notifications);
+      this.unreadCountSubject.next(notifications.filter((n) => !n.read).length);
+    });
   }
 
   /**
@@ -74,6 +133,16 @@ export class NotificationService {
         return of([]);
       })
     );
+  }
+
+  // Expose notifications as an Observable
+  get notifications$(): Observable<Notification[]> {
+    return this.notificationsSubject.asObservable();
+  }
+
+  // Expose unread count as an Observable
+  get unreadCount$(): Observable<number> {
+    return this.unreadCountSubject.asObservable();
   }
 
   /**
@@ -133,6 +202,22 @@ export class NotificationService {
     ).pipe(
       map(({ error }) => {
         if (error) throw error;
+
+        // Update unread count
+        const currentNotifications = this.notificationsSubject.getValue();
+        const updatedNotifications = currentNotifications.map(
+          (notification) => {
+            if (notification.id === notificationId) {
+              return { ...notification, read: true } as Notification;
+            }
+            return notification;
+          }
+        );
+
+        this.notificationsSubject.next(updatedNotifications);
+        this.unreadCountSubject.next(
+          updatedNotifications.filter((n) => !n.read).length
+        );
       }),
       catchError((error) => {
         console.error('Error marking notification as read:', error);
