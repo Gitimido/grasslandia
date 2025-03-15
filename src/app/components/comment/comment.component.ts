@@ -88,26 +88,31 @@ export class CommentComponent implements OnInit, OnDestroy {
         })
     );
 
-    // Subscribe to store updates for replies
+    // Subscribe to store updates for replies - FIXED
     this.subscriptions.push(
       this.store
         .select(selectCommentReplies(this.comment.id))
         .subscribe((replies) => {
-          if (replies && replies.length > 0) {
-            this.visibleReplies = replies as Comment[];
+          // Always update visible replies, even if empty
+          this.visibleReplies = replies as Comment[];
+
+          // Mark replies as loaded when we get a response
+          if (this.isLoadingReplies) {
             this.repliesLoaded = true;
-            this.repliesOffset = replies.length;
-
-            // Only mark loading as complete if we were actually loading
-            if (this.isLoadingReplies) {
-              this.isLoadingReplies = false;
-            }
-            if (this.isLoadingMoreReplies) {
-              this.isLoadingMoreReplies = false;
-            }
-
-            this.cdr.markForCheck();
+            this.isLoadingReplies = false;
           }
+
+          // Update offset only if we have replies
+          if (replies && replies.length > 0) {
+            this.repliesOffset = replies.length;
+          }
+
+          // Reset loading flags
+          if (this.isLoadingMoreReplies) {
+            this.isLoadingMoreReplies = false;
+          }
+
+          this.cdr.markForCheck();
         })
     );
   }
@@ -138,19 +143,26 @@ export class CommentComponent implements OnInit, OnDestroy {
     );
   }
 
-  // Method to toggle expanding/collapsing replies
+  // Method to toggle expanding/collapsing replies - FIXED
   toggleReplies(): void {
+    // Toggle state first, then load if needed
     this.areRepliesExpanded = !this.areRepliesExpanded;
 
-    // If expanding, load replies - whether or not they've been loaded before
-    if (this.areRepliesExpanded) {
+    // Immediately mark for check to ensure UI responds
+    this.cdr.markForCheck();
+
+    // If expanding and not already loaded, load replies
+    if (
+      this.areRepliesExpanded &&
+      (!this.repliesLoaded || this.visibleReplies.length === 0)
+    ) {
       this.loadReplies();
     }
   }
 
-  // Method to initially load replies
+  // Method to initially load replies - FIXED
   loadReplies(): void {
-    // Skip if already loading or we have loaded replies and they're visible
+    // Skip if already loading
     if (this.isLoadingReplies) return;
 
     console.log(`Loading replies for comment ${this.comment.id}`);
@@ -179,7 +191,7 @@ export class CommentComponent implements OnInit, OnDestroy {
         // Always make sure we reset loading state
         finalize(() => {
           loadingTimeout.unsubscribe();
-          this.isLoadingReplies = false;
+          // Don't reset isLoadingReplies here, let the store subscription do it
           this.cdr.markForCheck();
         }),
         // Catch any errors and reset loading state
@@ -195,19 +207,29 @@ export class CommentComponent implements OnInit, OnDestroy {
           console.log(
             `Loaded ${replies.length} replies for comment ${this.comment.id}`
           );
-          // Handle empty replies case
+
+          // The subscription to the store will update visibleReplies
+
+          // Set hasMoreReplies flag based on what was loaded
+          this.hasMoreReplies = replies.length >= this.repliesLimit;
+
+          // Explicitly mark as loaded in case of empty results
           if (replies.length === 0) {
-            this.hasMoreReplies = false;
             this.repliesLoaded = true;
-          } else {
-            // Store updates should handle updating the visible replies via the subscription
-            this.hasMoreReplies = replies.length >= this.repliesLimit;
+            this.isLoadingReplies = false;
+            this.cdr.markForCheck();
           }
+        },
+        error: (err) => {
+          // Handle error here too, to provide better feedback
+          console.error('Error in replies subscription:', err);
+          this.isLoadingReplies = false;
+          this.cdr.markForCheck();
         },
       });
   }
 
-  // Method to load more replies (pagination)
+  // Method to load more replies (pagination) - FIXED
   loadMoreReplies(): void {
     if (this.isLoadingMoreReplies) return;
 
@@ -234,7 +256,7 @@ export class CommentComponent implements OnInit, OnDestroy {
         timeout(8000),
         finalize(() => {
           loadingTimeout.unsubscribe();
-          this.isLoadingMoreReplies = false;
+          // Don't reset isLoadingMoreReplies here
           this.cdr.markForCheck();
         }),
         catchError((err) => {
@@ -247,9 +269,14 @@ export class CommentComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (moreReplies) => {
           console.log(`Loaded ${moreReplies.length} more replies`);
-          // Store updates should handle updating the visible replies
+          // Store updates will handle updating the visible replies
+          // Just update the flags here
           this.hasMoreReplies = moreReplies.length >= 30;
-          this.repliesOffset += moreReplies.length;
+        },
+        error: (err) => {
+          console.error('Error in more replies subscription:', err);
+          this.isLoadingMoreReplies = false;
+          this.cdr.markForCheck();
         },
       });
   }
@@ -345,7 +372,7 @@ export class CommentComponent implements OnInit, OnDestroy {
           // If replies weren't expanded, expand them to show the new reply
           if (!this.areRepliesExpanded) {
             this.areRepliesExpanded = true;
-            this.repliesLoaded = true;
+            // Don't set repliesLoaded here, let the subscription handle it
           }
 
           // Increment reply count
@@ -354,7 +381,10 @@ export class CommentComponent implements OnInit, OnDestroy {
           // Wait a moment then refresh the replies to ensure we see the new one
           setTimeout(() => {
             this.getRepliesCount();
-            this.loadReplies();
+            // Only reload if they weren't already loaded
+            if (!this.repliesLoaded) {
+              this.loadReplies();
+            }
           }, 300);
 
           this.cdr.markForCheck();

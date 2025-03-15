@@ -1,5 +1,6 @@
 <!-- src/app/components/comment/comment.component.html -->
-<div class="comment-container" [class.is-reply]="isReply" [ngClass]="'level-' + replyDepth">
+<div class="comment-container" [class.is-reply]="isReply" [ngClass]="'level-' + replyDepth" [attr.data-id]="comment.id"
+    [class.replies-expanded]="areRepliesExpanded">
     <div class="comment-header">
         <div class="user-info">
             <!-- Username with hover card -->

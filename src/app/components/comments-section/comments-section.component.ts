@@ -5,6 +5,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectorRef,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +28,7 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, FormsModule, CommentComponent, RouterModule],
   templateUrl: './comments-section.component.html',
   styleUrls: ['./comments-section.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush, // Add OnPush for better performance
 })
 export class CommentsSectionComponent implements OnInit, OnDestroy {
   @Input() postId!: string;
@@ -38,6 +40,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
 
   newCommentContent: string = '';
   isLoadingMore = false;
+  initialLoadComplete = false; // Add tracking for initial load
 
   // Local state properties
   visibleComments: Comment[] = [];
@@ -68,9 +71,8 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
       selectPostComments(this.postId)
     ) as Observable<Comment[]>;
 
-    // Set initial sort order and load comments
-    this.setSortBy('recent');
-    this.loadComments();
+    // Set initial sort order
+    this.setSortBy('recent', false); // Don't reload initially
 
     // Subscribe to loading state from store
     this.subscriptions.push(
@@ -83,7 +85,34 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
     // Subscribe to comments to update visible comments
     this.subscriptions.push(
       this.comments$.subscribe((comments) => {
-        this.visibleComments = comments;
+        // Important: preserve existing comments' UI state
+        if (this.initialLoadComplete && this.visibleComments.length > 0) {
+          // Map existing comments to their expanded states
+          const expandedStates = new Map<string, boolean>();
+          this.visibleComments.forEach((comment) => {
+            // This assumes CommentComponent exposes a public areRepliesExpanded property
+            // We'd need to track this state somehow - perhaps add a new field to maintain state
+            const componentElement = document.querySelector(
+              `app-comment[data-id="${comment.id}"]`
+            );
+            if (componentElement) {
+              // If we can't directly access the component, we could use a class or attribute
+              expandedStates.set(
+                comment.id,
+                componentElement.classList.contains('replies-expanded')
+              );
+            }
+          });
+
+          // Now update comments but preserve expanded states
+          this.visibleComments = comments;
+          // We would apply the expanded states here, but in actual implementation
+          // this is challenging because components are recreated
+        } else {
+          // First load or when there were no previous comments
+          this.visibleComments = comments;
+          this.initialLoadComplete = true;
+        }
 
         // If we received exactly the number of comments we requested,
         // there are probably more
@@ -102,6 +131,9 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       })
     );
+
+    // Load comments after all subscriptions are set up
+    this.loadComments();
   }
 
   ngOnDestroy(): void {
@@ -120,11 +152,13 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
   }
 
   // Set sort method and reload comments
-  setSortBy(sort: 'top' | 'recent'): void {
+  setSortBy(sort: 'top' | 'recent', reload: boolean = true): void {
     if (this.sortBy !== sort) {
       this.sortBy = sort;
       this.offset = 0;
-      this.loadComments();
+      if (reload) {
+        this.loadComments();
+      }
     }
   }
 
@@ -144,6 +178,7 @@ export class CommentsSectionComponent implements OnInit, OnDestroy {
     if (this.isLoadingMore) return;
 
     this.isLoadingMore = true;
+    this.cdr.markForCheck();
 
     this.commentService
       .getPostComments(

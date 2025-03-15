@@ -25,10 +25,10 @@ export const commentsReducer = createReducer(
     isLoading: false,
   })),
 
-  // Load replies
+  // Load replies - FIXED to not affect isLoading global state
   on(CommentsActions.loadReplies, (state) => ({
     ...state,
-    isLoading: true,
+    // Don't set isLoading: true here - that affects the entire comment section
     error: null,
   })),
   on(CommentsActions.loadRepliesSuccess, (state, { commentId, replies }) => ({
@@ -37,12 +37,12 @@ export const commentsReducer = createReducer(
       ...state.byParent,
       [commentId]: replies,
     },
-    isLoading: false,
+    // Don't change isLoading here either
   })),
   on(CommentsActions.loadRepliesFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false,
+    // Don't change isLoading
   })),
 
   // Create comment
@@ -86,12 +86,12 @@ export const commentsReducer = createReducer(
   // Update comment
   on(CommentsActions.updateComment, (state) => ({
     ...state,
-    isLoading: true,
+    // Don't set global isLoading for individual comment updates
     error: null,
   })),
   on(CommentsActions.updateCommentSuccess, (state, { comment }) => {
     // Create a new state with the updated comment
-    const newState = { ...state, isLoading: false };
+    const newState = { ...state };
 
     // Update in byPost if present
     if (comment.postId && state.byPost[comment.postId]) {
@@ -118,19 +118,18 @@ export const commentsReducer = createReducer(
   on(CommentsActions.updateCommentFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false,
   })),
 
   // Delete comment
   on(CommentsActions.deleteComment, (state) => ({
     ...state,
-    isLoading: true,
+    // Don't set global isLoading for individual comment deletions
     error: null,
   })),
   on(
     CommentsActions.deleteCommentSuccess,
     (state, { commentId, postId, parentId }) => {
-      const newState = { ...state, isLoading: false };
+      const newState = { ...state };
 
       // Remove from byPost if present
       if (postId && state.byPost[postId]) {
@@ -151,7 +150,6 @@ export const commentsReducer = createReducer(
       }
 
       // Also remove any replies to this comment
-      // This is important: we need to remove the parent's entries when the parent is deleted
       if (state.byParent[commentId]) {
         const { [commentId]: _, ...remainingParents } = state.byParent;
         newState.byParent = remainingParents;
@@ -163,7 +161,6 @@ export const commentsReducer = createReducer(
   on(CommentsActions.deleteCommentFailure, (state, { error }) => ({
     ...state,
     error,
-    isLoading: false,
   })),
 
   // Real-time updates handlers
