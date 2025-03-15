@@ -71,20 +71,6 @@ export const deleteCommentFailure = createAction(
   props<{ error: string }>()
 );
 
-// Vote on comment
-export const voteComment = createAction(
-  '[Comments] Vote Comment',
-  props<{ commentId: string; voteType: 'upvote' | 'downvote' | null }>()
-);
-export const voteCommentSuccess = createAction(
-  '[Comments] Vote Comment Success',
-  props<{ commentId: string; voteType: 'upvote' | 'downvote' | null }>()
-);
-export const voteCommentFailure = createAction(
-  '[Comments] Vote Comment Failure',
-  props<{ error: string }>()
-);
-
 // Real-time actions
 export const commentAdded = createAction(
   '[Comments] Comment Added',

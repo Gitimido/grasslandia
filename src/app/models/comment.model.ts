@@ -1,11 +1,4 @@
 // src/app/models/comment.model.ts
-
-export enum VoteType {
-  UPVOTE = 'upvote',
-  DOWNVOTE = 'downvote',
-}
-// In src/app/models/comment.model.ts
-// Add this interface to represent a simplified user for comments
 export interface ICommentUser {
   id: string;
   username: string;
@@ -30,12 +23,6 @@ export interface IComment {
   likes?: number;
   liked?: boolean;
   replies?: IComment[];
-
-  // Voting properties
-  upvotes?: number;
-  downvotes?: number;
-  score?: number;
-  userVote?: VoteType | null;
   replyingToUsername?: string;
 }
 
@@ -54,12 +41,6 @@ export class Comment implements IComment {
   liked?: boolean;
   replies?: Comment[];
   replyingToUsername?: string;
-
-  // Voting properties
-  upvotes: number;
-  downvotes: number;
-  score: number;
-  userVote?: VoteType | null;
 
   constructor(comment: IComment) {
     this.id = comment.id;
@@ -83,12 +64,6 @@ export class Comment implements IComment {
           reply instanceof Comment ? reply : new Comment(reply)
         )
       : [];
-
-    // Initialize voting properties
-    this.upvotes = comment.upvotes || 0;
-    this.downvotes = comment.downvotes || 0;
-    this.score = comment.score || 0;
-    this.userVote = comment.userVote || null;
   }
 
   get timeSince(): string {

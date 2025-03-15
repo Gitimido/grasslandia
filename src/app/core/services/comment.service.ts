@@ -16,7 +16,7 @@ import {
 import { map, catchError, switchMap, finalize, tap } from 'rxjs/operators';
 import { environment } from '../../../environment';
 import { AuthService } from './auth.service';
-import { Comment, VoteType, ICommentUser } from '../../models';
+import { Comment } from '../../models';
 import { Store } from '@ngrx/store';
 
 // Import comment actions and selectors
@@ -32,7 +32,6 @@ import {
 export class CommentService implements OnDestroy {
   private supabase: SupabaseClient;
   private commentsSubscription: RealtimeChannel | null = null;
-  private votesSubscription: RealtimeChannel | null = null;
 
   // Track loaded comments for better state management
   private loadedCommentIds = new Set<string>();
@@ -106,61 +105,12 @@ export class CommentService implements OnDestroy {
       .subscribe((status) => {
         console.log('Comments channel status:', status);
       });
-
-    // Also subscribe to comment_votes for real-time voting updates
-    this.votesSubscription = this.supabase
-      .channel('comment-votes-public')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comment_votes',
-          // No filters - listen to all vote changes
-        },
-        (payload) => {
-          console.log('Vote change detected:', payload);
-          const commentId =
-            payload.new && 'comment_id' in payload.new
-              ? payload.new['comment_id']
-              : payload.old && 'comment_id' in payload.old
-              ? payload.old['comment_id']
-              : null;
-
-          if (commentId) {
-            this.getCommentVoteCounts(commentId).subscribe((counts) => {
-              // Update comment with new vote counts by dispatching an update action
-              this.getComment(commentId).subscribe((comment) => {
-                if (comment) {
-                  const updatedComment = {
-                    ...comment,
-                    upvotes: counts.upvotes,
-                    downvotes: counts.downvotes,
-                    score: counts.score,
-                  };
-                  this.store.dispatch(
-                    CommentsActions.commentUpdated({ comment: updatedComment })
-                  );
-                }
-              });
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Votes channel status:', status);
-      });
   }
 
   private cleanupSubscription(): void {
     if (this.commentsSubscription) {
       this.supabase.removeChannel(this.commentsSubscription);
       this.commentsSubscription = null;
-    }
-
-    if (this.votesSubscription) {
-      this.supabase.removeChannel(this.votesSubscription);
-      this.votesSubscription = null;
     }
 
     // Reset tracking
@@ -279,7 +229,7 @@ export class CommentService implements OnDestroy {
             if (userError) throw userError;
 
             // Create userData object with proper types
-            const commentUser: ICommentUser = {
+            const commentUser = {
               id: userId,
               username:
                 userData?.username || this.getUsernameFromAuth() || 'User',
@@ -334,7 +284,7 @@ export class CommentService implements OnDestroy {
     this.store.dispatch(CommentsActions.loadComments({ postId }));
 
     // Determine sort order based on parameter
-    const sortOrder = sortBy === 'top' ? 'score' : 'created_at';
+    const sortOrder = 'created_at';
     const direction = 'desc'; // Always show newest first for better UX
 
     return from(
@@ -393,7 +343,7 @@ export class CommentService implements OnDestroy {
     // Dispatch action to load replies
     this.store.dispatch(CommentsActions.loadReplies({ commentId }));
 
-    const sortOrder = sortBy === 'top' ? 'score' : 'created_at';
+    const sortOrder = 'created_at';
     const ascending = false; // descending order (newest first)
 
     console.log(
@@ -626,189 +576,6 @@ export class CommentService implements OnDestroy {
     );
   }
 
-  /**
-   * Vote on a comment
-   */
-  voteOnComment(commentId: string, voteType: VoteType): Observable<void> {
-    const userId = this.authService.user?.id;
-    if (!userId) {
-      return throwError(() => new Error('User not authenticated'));
-    }
-
-    // Dispatch action
-    this.store.dispatch(
-      CommentsActions.voteComment({
-        commentId,
-        voteType,
-      })
-    );
-
-    // First check if the user has already voted on this comment
-    return this.getUserVoteOnComment(commentId).pipe(
-      switchMap((existingVote) => {
-        if (existingVote === voteType) {
-          // If voting the same way, remove the vote
-          return this.removeCommentVote(commentId);
-        } else if (existingVote) {
-          // If changing vote, update the existing vote
-          return from(
-            this.supabase
-              .from('comment_votes')
-              .update({ vote_type: voteType })
-              .match({ user_id: userId, comment_id: commentId })
-          ).pipe(
-            map(({ error }) => {
-              if (error) throw error;
-
-              // Dispatch success action
-              this.store.dispatch(
-                CommentsActions.voteCommentSuccess({
-                  commentId,
-                  voteType,
-                })
-              );
-            })
-          );
-        } else {
-          // If no existing vote, insert a new one
-          return from(
-            this.supabase.from('comment_votes').insert({
-              user_id: userId,
-              comment_id: commentId,
-              vote_type: voteType,
-            })
-          ).pipe(
-            map(({ error }) => {
-              if (error) throw error;
-
-              // Dispatch success action
-              this.store.dispatch(
-                CommentsActions.voteCommentSuccess({
-                  commentId,
-                  voteType,
-                })
-              );
-            })
-          );
-        }
-      }),
-      catchError((error) => {
-        console.error('Error voting on comment:', error);
-
-        // Dispatch failure action
-        this.store.dispatch(
-          CommentsActions.voteCommentFailure({
-            error: error.message || 'Failed to vote on comment',
-          })
-        );
-
-        return throwError(() => error);
-      })
-    );
-  }
-
-  // Keep methods for getting user vote and comment counts
-  getUserVoteOnComment(commentId: string): Observable<VoteType | null> {
-    const userId = this.authService.user?.id;
-    if (!userId) {
-      return of(null);
-    }
-
-    return from(
-      this.supabase
-        .from('comment_votes')
-        .select('vote_type')
-        .match({ user_id: userId, comment_id: commentId })
-        .single()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) {
-          // If no records found, return null
-          if (error.code === 'PGRST116') {
-            return null;
-          }
-          throw error;
-        }
-        return (data?.['vote_type'] as VoteType) || null;
-      }),
-      catchError((error) => {
-        console.error('Error getting user vote:', error);
-        return of(null);
-      })
-    );
-  }
-
-  getCommentVoteCounts(commentId: string): Observable<{
-    upvotes: number;
-    downvotes: number;
-    score: number;
-  }> {
-    return from(
-      this.supabase
-        .from('comment_vote_counts')
-        .select('*')
-        .eq('comment_id', commentId)
-        .single()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) {
-          // If no records found, return zeros
-          if (error.code === 'PGRST116') {
-            return { upvotes: 0, downvotes: 0, score: 0 };
-          }
-          throw error;
-        }
-        return {
-          upvotes: data?.['upvotes'] || 0,
-          downvotes: data?.['downvotes'] || 0,
-          score: data?.['score'] || 0,
-        };
-      }),
-      catchError((error) => {
-        console.error('Error getting vote counts:', error);
-        return of({ upvotes: 0, downvotes: 0, score: 0 });
-      })
-    );
-  }
-
-  private removeCommentVote(commentId: string): Observable<void> {
-    const userId = this.authService.user?.id;
-    if (!userId) {
-      return throwError(() => new Error('User not authenticated'));
-    }
-
-    return from(
-      this.supabase
-        .from('comment_votes')
-        .delete()
-        .match({ user_id: userId, comment_id: commentId })
-    ).pipe(
-      map(({ error }) => {
-        if (error) throw error;
-
-        // Dispatch success action with null vote type to indicate removal
-        this.store.dispatch(
-          CommentsActions.voteCommentSuccess({
-            commentId,
-            voteType: null,
-          })
-        );
-      }),
-      catchError((error) => {
-        console.error('Error removing vote:', error);
-
-        // Dispatch failure action
-        this.store.dispatch(
-          CommentsActions.voteCommentFailure({
-            error: error.message || 'Failed to remove vote',
-          })
-        );
-
-        return throwError(() => error);
-      })
-    );
-  }
-
   getCommentCount(postId: string): Observable<number> {
     return from(
       this.supabase
@@ -875,7 +642,7 @@ export class CommentService implements OnDestroy {
   // Helper function to map database row to Comment model
   private mapComment(data: any): Comment {
     // First, make sure we have proper user data
-    let userData: ICommentUser | undefined = undefined;
+    let userData: any | undefined = undefined;
 
     if (data.users) {
       userData = {

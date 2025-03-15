@@ -166,12 +166,6 @@ export const commentsReducer = createReducer(
     isLoading: false,
   })),
 
-  // Vote comment
-  on(CommentsActions.voteComment, (state) => ({
-    ...state,
-    // No loading state needed for optimistic updates
-  })),
-
   // Real-time updates handlers
   on(CommentsActions.commentAdded, (state, { comment }) => {
     if (!comment.parentId) {

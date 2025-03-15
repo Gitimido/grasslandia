@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Comment, VoteType } from '../../models';
+import { Comment } from '../../models';
 import { CommentService } from '../../core/services/comment.service';
 import { LikeService } from '../../core/services/like.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -66,8 +66,6 @@ export class CommentComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.checkVoteStatus();
-    this.getVoteCounts();
     this.getRepliesCount();
 
     // Subscribe to like count updates
@@ -119,37 +117,9 @@ export class CommentComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
 
-  private checkVoteStatus(): void {
-    this.subscriptions.push(
-      this.commentService.getUserVoteOnComment(this.comment.id).subscribe({
-        next: (voteType) => {
-          this.comment.userVote = voteType;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          console.error('Error checking vote status:', err);
-          // Don't keep loading on error
-          this.cdr.markForCheck();
-        },
-      })
-    );
-  }
-
-  private getVoteCounts(): void {
-    this.subscriptions.push(
-      this.commentService.getCommentVoteCounts(this.comment.id).subscribe({
-        next: (counts) => {
-          this.comment.upvotes = counts.upvotes;
-          this.comment.downvotes = counts.downvotes;
-          this.comment.score = counts.score;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          console.error('Error getting vote counts:', err);
-          this.cdr.markForCheck();
-        },
-      })
-    );
+  // Method to safely show @ symbol
+  getReplyingToText(username: string): string {
+    return '@' + username;
   }
 
   // Get just the count of replies
@@ -166,11 +136,6 @@ export class CommentComponent implements OnInit, OnDestroy {
         },
       })
     );
-  }
-
-  // Method to safely show @ symbol
-  getReplyingToText(username: string): string {
-    return '@' + username;
   }
 
   // Method to toggle expanding/collapsing replies
@@ -287,60 +252,6 @@ export class CommentComponent implements OnInit, OnDestroy {
           this.repliesOffset += moreReplies.length;
         },
       });
-  }
-
-  handleVote(type: string): void {
-    if (!this.authService.isAuthenticated()) {
-      return;
-    }
-
-    const voteType = type as VoteType;
-    const previousVote = this.comment.userVote;
-
-    // Optimistic UI update logic
-    if (this.comment.userVote === voteType) {
-      this.comment.userVote = null;
-      if (voteType === VoteType.UPVOTE) {
-        this.comment.upvotes = Math.max(0, (this.comment.upvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) - 1;
-      } else {
-        this.comment.downvotes = Math.max(0, (this.comment.downvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) + 1;
-      }
-    } else if (this.comment.userVote) {
-      this.comment.userVote = voteType;
-      if (voteType === VoteType.UPVOTE) {
-        this.comment.upvotes = (this.comment.upvotes || 0) + 1;
-        this.comment.downvotes = Math.max(0, (this.comment.downvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) + 2;
-      } else {
-        this.comment.downvotes = (this.comment.downvotes || 0) + 1;
-        this.comment.upvotes = Math.max(0, (this.comment.upvotes || 0) - 1);
-        this.comment.score = (this.comment.score || 0) - 2;
-      }
-    } else {
-      this.comment.userVote = voteType;
-      if (voteType === VoteType.UPVOTE) {
-        this.comment.upvotes = (this.comment.upvotes || 0) + 1;
-        this.comment.score = (this.comment.score || 0) + 1;
-      } else {
-        this.comment.downvotes = (this.comment.downvotes || 0) + 1;
-        this.comment.score = (this.comment.score || 0) - 1;
-      }
-    }
-
-    // Force update UI
-    this.cdr.markForCheck();
-
-    // Send vote to server
-    this.commentService.voteOnComment(this.comment.id, voteType).subscribe({
-      error: (err) => {
-        console.error('Error voting on comment:', err);
-        this.comment.userVote = previousVote;
-        this.getVoteCounts();
-        this.cdr.markForCheck();
-      },
-    });
   }
 
   toggleLike(): void {

@@ -7,10 +7,6 @@ export interface Comment {
   createdAt: Date;
   updatedAt: Date;
   user?: any;
-  upvotes?: number;
-  downvotes?: number;
-  score?: number;
-  userVote?: 'upvote' | 'downvote' | null;
 }
 
 export interface CommentsState {

@@ -57,21 +57,6 @@
     </div>
 
     <div class="comment-footer">
-        <!-- Voting controls -->
-        <div class="voting-controls">
-            <button class="vote-btn upvote" [class.active]="comment.userVote === 'upvote'"
-                (click)="handleVote('upvote')" title="Upvote">
-                <span class="material-icons">arrow_upward</span>
-            </button>
-            <span class="vote-count" [class.positive]="comment.score > 0" [class.negative]="comment.score < 0">
-                {{ comment.score }}
-            </span>
-            <button class="vote-btn downvote" [class.active]="comment.userVote === 'downvote'"
-                (click)="handleVote('downvote')" title="Downvote">
-                <span class="material-icons">arrow_downward</span>
-            </button>
-        </div>
-
         <!-- Like button -->
         <button class="action-btn" (click)="toggleLike()" [class.liked]="isLiked">
             <span class="material-icons">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
