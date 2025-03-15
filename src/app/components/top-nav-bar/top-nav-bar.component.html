@@ -1,0 +1,141 @@
+<!-- src/app/components/top-nav-bar/top-nav-bar.component.html -->
+<div class="top-nav-container">
+    <div class="nav-icons">
+        <!-- Friends Icon -->
+        <div class="nav-icon-wrapper">
+            <button class="nav-icon friend-toggle" (click)="toggleFriendsDropdown(); $event.stopPropagation()">
+                <span class="material-icons">people</span>
+                <span class="badge" *ngIf="friendRequestCount > 0">{{ friendRequestCount }}</span>
+            </button>
+
+            <!-- Friends Dropdown -->
+            <div class="dropdown-panel friends-dropdown" *ngIf="isFriendsDropdownOpen">
+                <div class="dropdown-header">
+                    <div class="tab-buttons">
+                        <button class="tab-btn" [class.active]="activeFriendsTab === 'requests'"
+                            (click)="setActiveTab('requests')">
+                            Requests
+                            <span class="badge-small" *ngIf="friendRequestCount > 0">{{ friendRequestCount }}</span>
+                        </button>
+                        <button class="tab-btn" [class.active]="activeFriendsTab === 'friends'"
+                            (click)="setActiveTab('friends')">
+                            Friends
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dropdown-content">
+                    <!-- Friend Requests Tab -->
+                    <div *ngIf="activeFriendsTab === 'requests'">
+                        <div *ngIf="isFriendsLoading" class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading friend requests...</span>
+                        </div>
+
+                        <div *ngIf="!isFriendsLoading && friendRequests.length === 0" class="empty-state">
+                            <p>No pending friend requests</p>
+                        </div>
+
+                        <ul *ngIf="!isFriendsLoading && friendRequests.length > 0" class="requests-list">
+                            <li *ngFor="let request of friendRequests" class="request-item">
+                                <div class="request-user">
+                                    <img [src]="request.avatarUrl || '/assets/default-avatar.png'"
+                                        [alt]="request.username" class="user-avatar">
+                                    <div class="user-details">
+                                        <span class="user-name">{{ request.fullName || 'User' }}</span>
+                                        <span class="username">{{ request.username }}</span>
+                                        <span class="timestamp" *ngIf="request.timestamp">{{
+                                            formatTimeAgo(request.timestamp) }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="request-actions">
+                                    <button class="accept-btn" [disabled]="actionLoading[request.id]"
+                                        (click)="acceptFriendRequest(request.id)">
+                                        <span *ngIf="!actionLoading[request.id]">Accept</span>
+                                        <span *ngIf="actionLoading[request.id]" class="btn-spinner"></span>
+                                    </button>
+                                    <button class="reject-btn" [disabled]="actionLoading[request.id]"
+                                        (click)="rejectFriendRequest(request.id)">
+                                        <span *ngIf="!actionLoading[request.id]">Reject</span>
+                                        <span *ngIf="actionLoading[request.id]" class="btn-spinner"></span>
+                                    </button>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Friends Tab -->
+                    <div *ngIf="activeFriendsTab === 'friends'">
+                        <div *ngIf="isFriendsLoading" class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading friends...</span>
+                        </div>
+
+                        <div *ngIf="!isFriendsLoading && currentFriends.length === 0" class="empty-state">
+                            <p>You don't have any friends yet</p>
+                        </div>
+
+                        <ul *ngIf="!isFriendsLoading && currentFriends.length > 0" class="friends-list">
+                            <li *ngFor="let friend of currentFriends" class="friend-item">
+                                <a [routerLink]="['/profile', friend.username]" class="friend-link">
+                                    <img [src]="friend.avatarUrl || '/assets/default-avatar.png'"
+                                        [alt]="friend.username" class="user-avatar">
+                                    <div class="user-details">
+                                        <span class="user-name">{{ friend.fullName || 'User' }}</span>
+                                        <span class="username">{{ friend.username }}</span>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Icon -->
+        <div class="nav-icon-wrapper">
+            <button class="nav-icon notification-toggle"
+                (click)="toggleNotificationsDropdown(); $event.stopPropagation()">
+                <span class="material-icons">notifications</span>
+                <span class="badge" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
+            </button>
+
+            <!-- Notifications Dropdown -->
+            <div class="dropdown-panel notifications-dropdown" *ngIf="isNotificationsDropdownOpen">
+                <div class="dropdown-header">
+                    <h3>Notifications</h3>
+                </div>
+
+                <div class="dropdown-content">
+                    <div *ngIf="isNotificationsLoading" class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Loading notifications...</span>
+                    </div>
+
+                    <div *ngIf="!isNotificationsLoading && notifications.length === 0" class="empty-state">
+                        <p>No notifications yet</p>
+                    </div>
+
+                    <ul *ngIf="!isNotificationsLoading && notifications.length > 0" class="notifications-list">
+                        <li *ngFor="let notification of notifications" class="notification-item"
+                            [class.unread]="!notification.read" (click)="markNotificationAsRead(notification.id)">
+                            <div class="notification-avatar">
+                                <img [src]="notification.actor?.avatar_url || '/assets/default-avatar.png'"
+                                    [alt]="notification.actor?.username || 'User'" class="user-avatar">
+                            </div>
+                            <div class="notification-content">
+                                <div class="notification-message">
+                                    <span class="actor-name">{{ notification.actor?.username || 'Someone' }}</span>
+                                    <span>{{ notification.content }}</span>
+                                </div>
+                                <div class="notification-time">{{ formatTimeAgo(notification.createdAt) }}</div>
+                            </div>
+                            <div class="notification-indicator" *ngIf="!notification.read"></div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

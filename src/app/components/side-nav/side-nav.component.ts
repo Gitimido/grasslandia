@@ -1,15 +1,12 @@
-// src/app/components/side-nav/side-nav.component.ts
+// src/app/components/side-nav/side-nav.component.ts (modified)
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { SideNavService } from '../../core/services/side-nav.service';
-import { FriendshipService } from '../../core/services/friendship.service';
-import { NotificationService } from '../../core/services/notification.service';
 import { User } from '@supabase/supabase-js';
 import { SearchPopupComponent } from '../search-popup/search-popup.component';
-import { Subscription, interval } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-side-nav',
@@ -24,31 +21,17 @@ export class SideNavComponent implements OnInit, OnDestroy {
   isHovered = false;
   isUserMenuOpen = false;
   isSearchOpen = false;
-  notificationCount = 0;
-  friendRequestCount = 0;
 
-  private checkCountsSubscription: Subscription | null = null;
+  private userSubscription: Subscription | null = null;
 
   constructor(
     private authService: AuthService,
-    private sideNavService: SideNavService,
-    private friendshipService: FriendshipService,
-    private notificationService: NotificationService
+    private sideNavService: SideNavService
   ) {}
 
   ngOnInit(): void {
-    this.authService.user$.subscribe((user) => {
+    this.userSubscription = this.authService.user$.subscribe((user) => {
       this.currentUser = user;
-
-      if (user) {
-        // If user is logged in, start periodic checks for notifications and friend requests
-        this.startPeriodicChecks();
-      } else {
-        // If user logs out, stop checks and reset counts
-        this.stopPeriodicChecks();
-        this.notificationCount = 0;
-        this.friendRequestCount = 0;
-      }
     });
 
     // Set initial collapsed state and inform the service
@@ -56,39 +39,9 @@ export class SideNavComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopPeriodicChecks();
-  }
-
-  private startPeriodicChecks(): void {
-    // Stop any existing subscription
-    this.stopPeriodicChecks();
-
-    // Initial check immediately
-    this.checkCounts();
-
-    // Then check every 30 seconds
-    this.checkCountsSubscription = interval(30000).subscribe(() => {
-      this.checkCounts();
-    });
-  }
-
-  private stopPeriodicChecks(): void {
-    if (this.checkCountsSubscription) {
-      this.checkCountsSubscription.unsubscribe();
-      this.checkCountsSubscription = null;
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
     }
-  }
-
-  private checkCounts(): void {
-    // Check notifications
-    this.notificationService.getUnreadCount().subscribe((count) => {
-      this.notificationCount = count;
-    });
-
-    // Check friend requests
-    this.friendshipService.getPendingFriendRequests().subscribe((requests) => {
-      this.friendRequestCount = requests.length;
-    });
   }
 
   onMouseEnter(): void {

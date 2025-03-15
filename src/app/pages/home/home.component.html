@@ -1,5 +1,9 @@
 <!-- src/app/pages/home/home.component.html -->
 <app-side-nav></app-side-nav>
+<div *ngIf="isLoggedIn" class="right-sidebar">
+</div>
+
+<app-top-nav-bar></app-top-nav-bar>
 
 <div class="home-container" [class.sidebar-collapsed]="isSidebarCollapsed">
     <!-- Add the auth debugger only during development -->
@@ -17,11 +21,8 @@
             </div>
         </div>
 
-        <!-- Right sidebar for friend requests and other widgets -->
-        <div *ngIf="isLoggedIn" class="right-sidebar">
-            <app-friend-requests></app-friend-requests>
 
-            <!-- You can add more widgets here in the future -->
-        </div>
+
+        <!-- You can add more widgets here in the future -->
     </div>
 </div>

@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { FriendRequestsComponent } from './friend-requests.component';
+import { TopNavBarComponent } from './top-nav-bar.component';
 
-describe('FriendRequestsComponent', () => {
-  let component: FriendRequestsComponent;
-  let fixture: ComponentFixture<FriendRequestsComponent>;
+describe('TopNavBarComponent', () => {
+  let component: TopNavBarComponent;
+  let fixture: ComponentFixture<TopNavBarComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [FriendRequestsComponent]
+      imports: [TopNavBarComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(FriendRequestsComponent);
+    fixture = TestBed.createComponent(TopNavBarComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

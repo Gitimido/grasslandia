@@ -195,8 +195,10 @@ export class CreatePostComponent implements OnInit, OnDestroy {
     const textarea = event.target as HTMLTextAreaElement;
     this.postContent = textarea.value;
     this.autoGrow(textarea);
-  }
 
+    // Add this line to update the button state whenever content changes
+    this.updateSubmitButtonState();
+  }
   // Open the create post modal
   openModal(): void {
     const modalContent = this.getModalHTML();
@@ -353,7 +355,7 @@ export class CreatePostComponent implements OnInit, OnDestroy {
               </div>
             </div>
 
-            <!-- Post content textarea -->
+            <!-- Post content textarea -->  
             <div class="content-area">
               <textarea 
                 placeholder="What's on your mind?" 
@@ -407,20 +409,21 @@ export class CreatePostComponent implements OnInit, OnDestroy {
             </div>
             
             <!-- Post button -->
-            <button 
-              class="post-button" 
-              ${
-                this.isSubmitting ||
-                (!this.postContent.trim() && this.selectedFiles.length === 0)
-                  ? 'disabled'
-                  : ''
-              }>
-              ${
-                !this.isSubmitting
-                  ? '<span>Post</span>'
-                  : '<span class="spinner"></span><span>Posting...</span>'
-              }
-            </button>
+<button 
+  class="post-button" 
+  ${
+    // Change this condition
+    this.isSubmitting ||
+    (this.postContent.trim() === '' && this.selectedFiles.length === 0)
+      ? 'disabled'
+      : ''
+  }>
+  ${
+    !this.isSubmitting
+      ? '<span>Post</span>'
+      : '<span class="spinner"></span><span>Posting...</span>'
+  }
+</button>
           </div>
         </div>
       </div>
