@@ -5,7 +5,7 @@ import { environment } from '../../../environment';
 import { Post } from '../../models';
 import { Media } from '../../models';
 import { Observable, from, throwError, forkJoin, of } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -22,28 +22,29 @@ export class PostService {
   }
 
   /**
-   * TODO: May be important later ( but never use this in iteration as will increae load on database )
-   * TODO: better approach is handle post search by indecies from database itself
    * Get a post by ID
-   *
-   * Used by:
-   * - No direct component usage (potential usage in PostDetailComponent)
-   *
-   * @param id Post ID
-   * @returns Observable with the post
    */
   getPost(id: string): Observable<Post> {
     // Makes a single query to fetch a post with its user details
     return from(
       this.supabase
         .from('posts')
-        .select('*, users(username, avatar_url, full_name)')
+        .select(
+          `
+          *, 
+          users:user_id(*),
+          shared_post:shared_post_id(*, users:user_id(*))
+        `
+        )
         .eq('id', id)
         .single()
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        return data as Post;
+
+        const post = this.mapPostFromSupabase(data);
+
+        return post;
       }),
       catchError((error) => throwError(() => error))
     );
@@ -51,12 +52,6 @@ export class PostService {
 
   /**
    * Delete a post
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param id Post ID to delete
-   * @returns Observable with success status
    */
   deletePost(id: string): Observable<void> {
     // Deletes a post by ID from the posts table
@@ -70,13 +65,6 @@ export class PostService {
 
   /**
    * Hide a post for the current user
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param postId Post ID to hide
-   * @param userId Current user ID
-   * @returns Observable with success status
    */
   hidePost(postId: string, userId: string): Observable<void> {
     // Inserts a record into user_hidden_posts to track hidden posts
@@ -94,13 +82,6 @@ export class PostService {
 
   /**
    * Save a post for the current user
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param postId Post ID to save
-   * @param userId Current user ID
-   * @returns Observable with success status
    */
   savePost(postId: string, userId: string): Observable<void> {
     // Inserts a record into user_saved_posts to bookmark the post
@@ -118,13 +99,6 @@ export class PostService {
 
   /**
    * Unsave a post for the current user
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param postId Post ID to unsave
-   * @param userId Current user ID
-   * @returns Observable with success status
    */
   unsavePost(postId: string, userId: string): Observable<void> {
     // Removes a record from user_saved_posts
@@ -143,13 +117,6 @@ export class PostService {
 
   /**
    * Unhide a post for the current user
-   *
-   * Used by:
-   * - No direct component usage
-   *
-   * @param postId Post ID to unhide
-   * @param userId Current user ID
-   * @returns Observable with success status
    */
   unhidePost(postId: string, userId: string): Observable<void> {
     // Removes a record from user_hidden_posts
@@ -168,13 +135,6 @@ export class PostService {
 
   /**
    * Check if a post is saved by the current user
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param postId Post ID to check
-   * @param userId Current user ID
-   * @returns Observable with boolean indicating if post is saved
    */
   isPostSaved(postId: string, userId: string): Observable<boolean> {
     // Checks if a record exists in user_saved_posts
@@ -194,13 +154,6 @@ export class PostService {
 
   /**
    * Check if a post is hidden by the current user
-   *
-   * Used by:
-   * - No direct component usage
-   *
-   * @param postId Post ID to check
-   * @param userId Current user ID
-   * @returns Observable with boolean indicating if post is hidden
    */
   isPostHidden(postId: string, userId: string): Observable<boolean> {
     // Checks if a record exists in user_hidden_posts
@@ -220,12 +173,6 @@ export class PostService {
 
   /**
    * Get all saved posts for a user
-   *
-   * Used by:
-   * - No direct component usage (potential usage in Bookmarks page)
-   *
-   * @param userId User ID
-   * @returns Observable with array of saved posts
    */
   getSavedPosts(userId: string): Observable<Post[]> {
     // Retrieves all saved posts with a join on the posts table
@@ -245,16 +192,123 @@ export class PostService {
   }
 
   /**
-   * Share a post (generates a shareable link)
-   *
-   * Used by:
-   * - PostCardComponent (src/app/components/post-card/post-card.component.ts)
-   *
-   * @param postId Post ID to share
-   * @returns Observable with shareable link
+   * Share a post - new implementation to create a shared post
+   * @param postId The ID of the post to share
+   * @param comment Optional comment to add to the shared post
+   * @returns Observable with the newly created shared post
    */
-  sharePost(postId: string): Observable<string> {
-    // Generates a shareable link with the current domain and post ID
+  sharePost(postId: string, comment?: string): Observable<Post> {
+    const userId = this.authService.user?.id;
+    if (!userId) {
+      return throwError(() => new Error('User not authenticated'));
+    }
+
+    // Create a new post that references the original
+    const sharedPostData = {
+      user_id: userId,
+      content: comment || '', // Optional comment
+      privacy_level: 'public', // Default to public for shares
+      shared_post_id: postId, // Reference to the original post
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    return from(
+      this.supabase.from('posts').insert(sharedPostData).select('*')
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          throw new Error('Failed to share post');
+        }
+
+        // Convert to Post model
+        return new Post({
+          id: data[0].id,
+          userId: data[0].user_id,
+          content: data[0].content,
+          privacyLevel: data[0].privacy_level,
+          sharedPostId: data[0].shared_post_id,
+          createdAt: new Date(data[0].created_at),
+          updatedAt: new Date(data[0].updated_at),
+        });
+      }),
+      catchError((error) => {
+        console.error('Error sharing post:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get share count for a post
+   * @param postId The post ID
+   * @returns Observable with the share count
+   */
+  getPostShareCount(postId: string): Observable<number> {
+    return from(
+      this.supabase
+        .from('post_share_counts')
+        .select('count')
+        .eq('post_id', postId)
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          // If no rows found, return 0
+          if (error.code === 'PGRST116') {
+            return 0;
+          }
+          throw error;
+        }
+        return data?.count || 0;
+      }),
+      catchError((error) => {
+        console.error('Error getting post share count:', error);
+        return of(0);
+      })
+    );
+  }
+
+  /**
+   * Get a reactive observable for share count
+   * @param postId The post ID
+   * @returns Observable that updates when share count changes
+   */
+  getPostShareCountObservable(postId: string): Observable<number> {
+    // First fetch the initial count
+    this.getPostShareCount(postId).subscribe();
+
+    // Set up a real-time channel for share count updates
+    const channel = this.supabase
+      .channel(`post-share-count-${postId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'post_share_counts',
+          filter: `post_id=eq.${postId}`,
+        },
+        (payload) => {
+          // When a change occurs, we'll refetch the count
+          this.getPostShareCount(postId).subscribe();
+        }
+      )
+      .subscribe();
+
+    // Return the one-time count for now
+    // In the future, you could enhance this with a BehaviorSubject
+    return this.getPostShareCount(postId);
+  }
+
+  /**
+   * Get the link for sharing a post externally
+   * @param postId Post ID
+   * @returns Observable with the shareable link
+   */
+  getShareableLink(postId: string): Observable<string> {
     const shareableLink = `${window.location.origin}/post/${postId}`;
     return new Observable((observer) => {
       observer.next(shareableLink);
@@ -263,12 +317,7 @@ export class PostService {
   }
 
   /**
-   * Get posts for the home feed
-   *
-   * Used by:
-   * - FeedComponent (src/app/components/feed/feed.component.ts)
-   *
-   * @returns Observable with array of posts
+   * Get posts for the home feed - updated to include shared posts
    */
   getHomeFeed(): Observable<Post[]> {
     // Get the current user ID (if logged in)
@@ -277,7 +326,13 @@ export class PostService {
     // Build the query based on authentication status
     let query = this.supabase
       .from('posts')
-      .select('*, users:user_id(*)')
+      .select(
+        `
+        *, 
+        users:user_id(*),
+        shared_post:shared_post_id(*, users:user_id(*))
+      `
+      )
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -300,31 +355,39 @@ export class PostService {
           return of([]);
         }
 
-        // Create an array of posts
-        const posts = data.map((post) => {
-          return new Post({
-            id: post.id,
-            userId: post.user_id,
-            content: post.content,
-            privacyLevel: post.privacy_level,
-            groupId: post.group_id,
-            createdAt: new Date(post.created_at),
-            updatedAt: new Date(post.updated_at),
-            user: post.users,
-          });
-        });
+        // Map posts from Supabase response
+        const posts = data.map((post) => this.mapPostFromSupabase(post));
 
-        // Now fetch media for each post and merge it
-        const postWithMediaRequests = posts.map((post) => {
-          return this.getPostMedia(post.id).pipe(
-            map((media) => {
-              post.media = media;
-              return post;
-            })
+        // Fetch media for all posts (including shared posts)
+        const mediaRequests: Observable<Post>[] = [];
+
+        // Regular post media
+        posts.forEach((post) => {
+          mediaRequests.push(
+            this.getPostMedia(post.id).pipe(
+              map((media) => {
+                post.media = media;
+                return post;
+              })
+            )
           );
+
+          // Also fetch media for shared posts
+          if (post.sharedPostId && post.sharedPost) {
+            mediaRequests.push(
+              this.getPostMedia(post.sharedPostId).pipe(
+                map((media) => {
+                  if (post.sharedPost) {
+                    post.sharedPost.media = media;
+                  }
+                  return post;
+                })
+              )
+            );
+          }
         });
 
-        return forkJoin(postWithMediaRequests);
+        return forkJoin(mediaRequests);
       }),
       catchError((error) => {
         console.error('Error fetching home feed:', error);
@@ -333,14 +396,40 @@ export class PostService {
     );
   }
 
+  // Helper method to map Supabase post data to our Post model
+  private mapPostFromSupabase(data: any): Post {
+    // Create the post object
+    const post = new Post({
+      id: data.id,
+      userId: data.user_id,
+      content: data.content,
+      privacyLevel: data.privacy_level,
+      groupId: data.group_id,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      user: data.users,
+      sharedPostId: data.shared_post_id,
+    });
+
+    // Add shared post if it exists
+    if (data.shared_post) {
+      post.sharedPost = new Post({
+        id: data.shared_post.id,
+        userId: data.shared_post.user_id,
+        content: data.shared_post.content,
+        privacyLevel: data.shared_post.privacy_level,
+        groupId: data.shared_post.group_id,
+        createdAt: new Date(data.shared_post.created_at),
+        updatedAt: new Date(data.shared_post.updated_at),
+        user: data.shared_post.users,
+      });
+    }
+
+    return post;
+  }
+
   /**
    * Get media for a specific post
-   *
-   * Used by:
-   * - Used internally by getHomeFeed and getPostsByUsername
-   *
-   * @param postId Post ID
-   * @returns Observable with array of media items
    */
   getPostMedia(postId: string): Observable<Media[]> {
     // Fetches all media attachments for a post, ordered by index
@@ -379,71 +468,7 @@ export class PostService {
   }
 
   /**
-   * TODO: This need to be implemented inside the post inside of diffrenet method
-   * Create a post with attached media
-   *
-   * Used by:
-   * - No direct component usage (legacy method)
-   *
-   * @param post Post object to create
-   * @param mediaItems Media items to attach
-   * @returns Observable with created post
-   */
-  createPostWithMedia(post: Post, mediaItems: Media[]): Observable<Post> {
-    // First creates the post, then attaches media items in a transaction-like flow
-    return from(
-      this.supabase
-        .from('posts')
-        .insert({
-          id: post.id,
-          user_id: post.userId,
-          content: post.content,
-          privacy_level: post.privacyLevel,
-          created_at: post.createdAt,
-          updated_at: post.updatedAt,
-        })
-        .select()
-    ).pipe(
-      switchMap(({ data, error }) => {
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          throw new Error('Failed to create post');
-        }
-
-        // Now insert all media items
-        const mediaInserts = mediaItems.map((media) => ({
-          id: media.id,
-          post_id: media.postId,
-          url: media.url,
-          media_type: media.mediaType,
-          order_index: media.orderIndex,
-          created_at: media.createdAt,
-        }));
-
-        return from(this.supabase.from('media').insert(mediaInserts).select());
-      }),
-      switchMap(({ data, error }) => {
-        if (error) throw error;
-
-        // Now fetch the complete post with media
-        return this.getPost(post.id);
-      }),
-      catchError((error) => {
-        console.error('Error creating post with media:', error);
-        return throwError(() => error);
-      })
-    );
-  }
-
-  /**
    * Create a post without media
-   *
-   * Used by:
-   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
-   *
-   * @param post Post object to create
-   * @returns Observable with created post
    */
   createPost(post: Post): Observable<Post> {
     // Creates a basic post without media attachments
@@ -495,13 +520,6 @@ export class PostService {
 
   /**
    * Add media to an existing post
-   *
-   * Used by:
-   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
-   *
-   * @param postId Post ID to add media to
-   * @param mediaItems Media items to add
-   * @returns Observable indicating success
    */
   addMediaToPost(postId: string, mediaItems: any[]): Observable<void> {
     // Skip if no media items to add
@@ -534,13 +552,6 @@ export class PostService {
 
   /**
    * Upload media file to Supabase storage
-   *
-   * Used by:
-   * - CreatePostComponent (src/app/components/create-post/create-post.component.ts)
-   *
-   * @param file File to upload
-   * @param fileName Name to save the file as
-   * @returns Promise with the public URL of the uploaded file
    */
   uploadMedia(file: File, fileName: string): Promise<string> {
     const filePath = fileName;
@@ -573,12 +584,6 @@ export class PostService {
 
   /**
    * Get posts by username for profile page
-   *
-   * Used by:
-   * - ProfileComponent (src/app/pages/profile/profile.component.ts)
-   *
-   * @param username The username to fetch posts for
-   * @returns Observable with array of posts
    */
   getPostsByUsername(username: string): Observable<Post[]> {
     // First looks up user ID from username, then fetches posts with that user ID
@@ -591,11 +596,17 @@ export class PostService {
 
         const userId = data.id;
 
-        // Now get posts by this user ID
+        // Now get posts by this user ID, including shared posts
         return from(
           this.supabase
             .from('posts')
-            .select('*, users:user_id(*)')
+            .select(
+              `
+              *, 
+              users:user_id(*),
+              shared_post:shared_post_id(*, users:user_id(*))
+            `
+            )
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
         );
@@ -605,32 +616,39 @@ export class PostService {
         if (error) throw error;
         if (!data || data.length === 0) return of([]);
 
-        // Create array of posts
-        const posts = data.map(
-          (post: any) =>
-            new Post({
-              id: post.id,
-              userId: post.user_id,
-              content: post.content,
-              privacyLevel: post.privacy_level,
-              groupId: post.group_id,
-              createdAt: new Date(post.created_at),
-              updatedAt: new Date(post.updated_at),
-              user: post.users,
-            })
-        );
+        // Map posts from Supabase response
+        const posts = data.map((post: any) => this.mapPostFromSupabase(post));
 
-        // Get media for each post using forkJoin for parallel requests
-        const postWithMediaRequests = posts.map((post: any) =>
-          this.getPostMedia(post.id).pipe(
-            map((media) => {
-              post.media = media;
-              return post;
-            })
-          )
-        );
+        // Fetch media for all posts (including shared posts)
+        const mediaRequests: Observable<Post>[] = [];
 
-        return forkJoin(postWithMediaRequests).pipe(
+        // Regular post media
+        posts.forEach((post: any) => {
+          mediaRequests.push(
+            this.getPostMedia(post.id).pipe(
+              map((media) => {
+                post.media = media;
+                return post;
+              })
+            )
+          );
+
+          // Also fetch media for shared posts
+          if (post.sharedPostId && post.sharedPost) {
+            mediaRequests.push(
+              this.getPostMedia(post.sharedPostId).pipe(
+                map((media) => {
+                  if (post.sharedPost) {
+                    post.sharedPost.media = media;
+                  }
+                  return post;
+                })
+              )
+            );
+          }
+        });
+
+        return forkJoin(mediaRequests).pipe(
           catchError(() => of(posts)) // Return posts without media if media fetch fails
         );
       }),

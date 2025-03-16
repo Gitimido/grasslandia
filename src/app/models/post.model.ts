@@ -10,6 +10,11 @@ export interface IPost {
   createdAt: Date;
   updatedAt: Date;
 
+  // Add shared post properties
+  sharedPostId?: string;
+  sharedPost?: IPost; // The original post that was shared
+  sharesCount?: number; // Number of times this post has been shared
+
   // Expanded properties (not from DB)
   user?: IUser;
   media?: IMedia[];
@@ -26,6 +31,11 @@ export class Post implements IPost {
   groupId?: string;
   createdAt: Date;
   updatedAt: Date;
+
+  // Add shared post properties
+  sharedPostId?: string;
+  sharedPost?: Post;
+  sharesCount?: number;
 
   // Expanded properties
   user?: IUser;
@@ -47,10 +57,27 @@ export class Post implements IPost {
     this.comments = post.comments || [];
     this.likes = post.likes || 0;
     this.liked = post.liked || false;
+
+    // Add shared post properties
+    this.sharedPostId = post.sharedPostId;
+    this.sharesCount = post.sharesCount || 0;
+
+    // Convert shared post from IPost to Post if it exists
+    if (post.sharedPost) {
+      this.sharedPost =
+        post.sharedPost instanceof Post
+          ? post.sharedPost
+          : new Post(post.sharedPost);
+    }
   }
 
   get hasMedia(): boolean {
     return this.media !== undefined && this.media.length > 0;
+  }
+
+  // New getter to check if this is a shared post
+  get isSharedPost(): boolean {
+    return !!this.sharedPostId;
   }
 
   get timeSince(): string {

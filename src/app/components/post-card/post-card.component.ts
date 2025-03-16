@@ -14,7 +14,8 @@ import { Post } from '../../models';
 import { MediaDisplayComponent } from '../media-display/media-display.component';
 import { PostService } from '../../core/services/post.service';
 import { RouterModule } from '@angular/router';
-import { Subscription, forkJoin, take, timer } from 'rxjs';
+import { Subscription, forkJoin, of, switchMap, throwError, timer } from 'rxjs';
+import { finalize, take, tap, catchError } from 'rxjs/operators';
 import { Media } from '../../models';
 import { LikeService } from '../../core/services/like.service';
 import { CommentService } from '../../core/services/comment.service';
@@ -24,6 +25,8 @@ import {
   selectUser,
   selectIsAuthenticated,
 } from '../../core/store/Auth/auth.selectors';
+import { FormsModule } from '@angular/forms';
+import { ModalService } from '../../core/services/model.service';
 
 @Component({
   selector: 'app-post-card',
@@ -33,6 +36,7 @@ import {
     MediaDisplayComponent,
     RouterModule,
     CommentsSectionComponent,
+    FormsModule,
   ],
   templateUrl: './post-card.component.html',
   styleUrls: ['./post-card.component.scss'],
@@ -52,11 +56,18 @@ export class PostCardComponent implements OnInit, OnDestroy {
   commentCount = 0;
   isLikeInProgress = false; // Flag to prevent multiple rapid clicks
 
+  // Share functionality
+  sharesCount = 0;
+  isShareModalOpen = false;
+  shareComment = '';
+  isSharing = false;
+
   private userSubscription?: Subscription;
   private isAuthenticatedSubscription?: Subscription;
   private likeCountSubscription?: Subscription;
   private likeStatusSubscription?: Subscription;
   private commentCountSubscription?: Subscription;
+  private shareCountSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -64,7 +75,8 @@ export class PostCardComponent implements OnInit, OnDestroy {
     private likeService: LikeService,
     private commentService: CommentService,
     private store: Store,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -102,6 +114,14 @@ export class PostCardComponent implements OnInit, OnDestroy {
       .getCommentCountObservable(this.post.id)
       .subscribe((count) => {
         this.commentCount = count;
+        this.cdr.markForCheck();
+      });
+
+    // Get share count using reactive observable
+    this.shareCountSubscription = this.postService
+      .getPostShareCount(this.post.id)
+      .subscribe((count) => {
+        this.sharesCount = count;
         this.cdr.markForCheck();
       });
 
@@ -145,6 +165,10 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
     if (this.commentCountSubscription) {
       this.commentCountSubscription.unsubscribe();
+    }
+
+    if (this.shareCountSubscription) {
+      this.shareCountSubscription.unsubscribe();
     }
 
     // Clean up any other subscriptions
@@ -308,12 +332,257 @@ export class PostCardComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Enhanced sharePost method to open a modal for sharing
   sharePost(): void {
-    this.postService.sharePost(this.post.id).subscribe((shareLink) => {
-      navigator.clipboard.writeText(shareLink).then(() => {
-        console.log('Link copied to clipboard');
+    // Check authentication first
+    this.store
+      .select(selectIsAuthenticated)
+      .pipe(take(1))
+      .subscribe((isAuthenticated) => {
+        if (!isAuthenticated) {
+          console.log('User not authenticated');
+          // Could add a redirect to login here
+          return;
+        }
+
+        // Open a modal dialog for sharing options
+        this.isShareModalOpen = true;
+        this.shareComment = '';
+        this.createShareModal();
       });
+  }
+
+  private createShareModal(): void {
+    const modalHTML = this.getShareModalHTML();
+    this.modalService.openModal(modalHTML);
+
+    // Setup event listeners
+    setTimeout(() => {
+      // Get the textarea and add event listener
+      const textArea = document.querySelector(
+        '.share-comment'
+      ) as HTMLTextAreaElement;
+      if (textArea) {
+        textArea.focus();
+        textArea.addEventListener('input', (e) => {
+          this.shareComment = (e.target as HTMLTextAreaElement).value;
+        });
+      }
+
+      // Add click event to share button
+      const shareBtn = document.querySelector(
+        '.share-btn'
+      ) as HTMLButtonElement;
+      if (shareBtn) {
+        shareBtn.addEventListener('click', () => this.submitShare());
+      }
+
+      // Add click event to share-external button
+      const shareExternalBtn = document.querySelector(
+        '.share-external-btn'
+      ) as HTMLButtonElement;
+      if (shareExternalBtn) {
+        shareExternalBtn.addEventListener('click', () =>
+          this.shareExternally()
+        );
+      }
+
+      // Add click event to cancel button
+      const cancelBtn = document.querySelector(
+        '.cancel-share-btn'
+      ) as HTMLButtonElement;
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          this.modalService.closeModal();
+        });
+      }
+    }, 0);
+  }
+
+  private getShareModalHTML(): string {
+    // Get user avatar and name for share preview
+    const userAvatar = this.currentUserId
+      ? this.post.user?.avatarUrl || '/assets/default-avatar.png'
+      : '/assets/default-avatar.png';
+
+    const userName = this.post.user?.username || 'User';
+
+    return `
+      <div class="share-modal-overlay">
+        <div class="share-modal">
+          <div class="modal-header">
+            <h3>Share Post</h3>
+            <button class="close-btn">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="share-tabs">
+              <button class="share-tab active" data-tab="repost">Repost</button>
+              <button class="share-tab" data-tab="external">Share Externally</button>
+            </div>
+            
+            <div class="share-tab-content">
+              <div class="original-post-preview">
+                <div class="preview-header">
+                  <img src="${
+                    this.post.user?.avatarUrl || '/assets/default-avatar.png'
+                  }" alt="User avatar" class="small-avatar">
+                  <div class="preview-user">
+                    <div class="preview-username">${
+                      this.post.user?.username || 'User'
+                    }</div>
+                    <div class="preview-time">${this.post.timeSince}</div>
+                  </div>
+                </div>
+                <div class="preview-content">${this.post.content}</div>
+                ${
+                  this.post.hasMedia
+                    ? '<div class="preview-media-indicator">Media content</div>'
+                    : ''
+                }
+              </div>
+              
+              <div id="repost-tab" class="tab-pane active">
+                <div class="share-comment-container">
+                  <textarea 
+                    placeholder="Add a comment to your repost..." 
+                    class="share-comment"
+                    ${this.isSharing ? 'disabled' : ''}
+                  >${this.shareComment}</textarea>
+                </div>
+                
+                <div class="share-options">
+                  <button class="share-btn" ${this.isSharing ? 'disabled' : ''}>
+                    ${
+                      this.isSharing
+                        ? '<span class="spinner"></span> Sharing...'
+                        : 'Repost'
+                    }
+                  </button>
+                </div>
+              </div>
+              
+              <div id="external-tab" class="tab-pane">
+                <div class="external-share-options">
+                  <p>Share this post with others:</p>
+                  <div class="share-link-container">
+                    <input type="text" class="share-link" readonly value="${
+                      window.location.origin
+                    }/post/${this.post.id}">
+                    <button class="copy-link-btn">Copy</button>
+                  </div>
+                  
+                  <div class="share-buttons">
+                    <button class="share-external-btn">
+                      <span class="material-icons">share</span>
+                      Share
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button class="cancel-share-btn" ${
+              this.isSharing ? 'disabled' : ''
+            }>Cancel</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  submitShare(): void {
+    if (this.isSharing) return;
+
+    this.isSharing = true;
+    this.cdr.markForCheck();
+
+    // Update the button state in the DOM
+    const shareBtn = document.querySelector('.share-btn') as HTMLButtonElement;
+    if (shareBtn) {
+      shareBtn.disabled = true;
+      shareBtn.innerHTML = '<span class="spinner"></span> Sharing...';
+    }
+
+    this.postService
+      .sharePost(this.post.id, this.shareComment)
+      .pipe(
+        // Force reload the share count after success
+        switchMap(() => this.postService.getPostShareCount(this.post.id)),
+        catchError((error) => {
+          console.error('Error sharing post:', error);
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.isSharing = false;
+          this.modalService.closeModal();
+          this.cdr.markForCheck();
+
+          // Refresh the feed if possible
+          this.refreshFeed();
+        })
+      )
+      .subscribe({
+        next: (count) => {
+          this.sharesCount = count;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Share error:', error);
+
+          // Reset UI state
+          const shareBtn = document.querySelector(
+            '.share-btn'
+          ) as HTMLButtonElement;
+          if (shareBtn) {
+            shareBtn.disabled = false;
+            shareBtn.innerHTML = 'Repost';
+          }
+        },
+      });
+  }
+
+  shareExternally(): void {
+    if (navigator.share) {
+      // Use Web Share API if available
+      navigator
+        .share({
+          title: 'Check out this post',
+          text:
+            this.post.content.substring(0, 100) +
+            (this.post.content.length > 100 ? '...' : ''),
+          url: `${window.location.origin}/post/${this.post.id}`,
+        })
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing:', error));
+    } else {
+      // Fallback to clipboard
+      this.copyLinkToClipboard();
+    }
+  }
+
+  copyLinkToClipboard(): void {
+    const shareLink = `${window.location.origin}/post/${this.post.id}`;
+    navigator.clipboard.writeText(shareLink).then(() => {
+      alert('Link copied to clipboard!');
+      this.modalService.closeModal();
     });
+  }
+
+  private refreshFeed(): void {
+    // Find feed component and refresh
+    const feedComponent = document.querySelector('app-feed');
+    if (feedComponent) {
+      try {
+        (feedComponent as any).loadPosts();
+      } catch (err) {
+        console.error('Error refreshing feed:', err);
+      }
+    }
   }
 
   toggleActions(): void {
