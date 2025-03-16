@@ -8,6 +8,8 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  ElementRef,
+  Renderer2,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Post } from '../../models';
@@ -26,7 +28,6 @@ import {
   selectIsAuthenticated,
 } from '../../core/store/Auth/auth.selectors';
 import { FormsModule } from '@angular/forms';
-import { ModalService } from '../../core/services/model.service';
 
 @Component({
   selector: 'app-post-card',
@@ -61,6 +62,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
   isShareModalOpen = false;
   shareComment = '';
   isSharing = false;
+  shareTab: 'repost' | 'external' = 'repost';
 
   private userSubscription?: Subscription;
   private isAuthenticatedSubscription?: Subscription;
@@ -69,6 +71,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
   private commentCountSubscription?: Subscription;
   private shareCountSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
+  private modalElement: HTMLElement | null = null;
 
   constructor(
     private postService: PostService,
@@ -76,7 +79,8 @@ export class PostCardComponent implements OnInit, OnDestroy {
     private commentService: CommentService,
     private store: Store,
     private cdr: ChangeDetectorRef,
-    private modalService: ModalService
+    private el: ElementRef,
+    private renderer: Renderer2
   ) {}
 
   ngOnInit(): void {
@@ -143,6 +147,20 @@ export class PostCardComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptions.push(syncInterval);
+
+    // Setup document click handler for modal
+    // Setup document click handler for modal
+    this.renderer.listen('document', 'click', (event) => {
+      if (this.isShareModalOpen && this.modalElement) {
+        // Check if the click was on the overlay but NOT on the modal content
+        if (this.modalElement === event.target) {
+          // Click was directly on the overlay background
+          this.closeShareModal();
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -173,6 +191,9 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
     // Clean up any other subscriptions
     this.subscriptions.forEach((sub) => sub.unsubscribe());
+
+    // Remove modal if it exists
+    this.closeShareModal();
   }
 
   checkSavedStatus(): void {
@@ -332,7 +353,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Enhanced sharePost method to open a modal for sharing
+  // Custom share modal implementation
   sharePost(): void {
     // Check authentication first
     this.store
@@ -345,168 +366,300 @@ export class PostCardComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Open a modal dialog for sharing options
         this.isShareModalOpen = true;
         this.shareComment = '';
+        this.shareTab = 'repost';
         this.createShareModal();
+        this.cdr.markForCheck();
       });
   }
 
   private createShareModal(): void {
-    const modalHTML = this.getShareModalHTML();
-    this.modalService.openModal(modalHTML);
+    // Create modal container if it doesn't exist
+    if (!this.modalElement) {
+      this.modalElement = this.renderer.createElement('div');
+      this.renderer.addClass(this.modalElement, 'share-modal-overlay');
+      this.renderer.appendChild(document.body, this.modalElement);
+    }
 
-    // Setup event listeners
-    setTimeout(() => {
-      // Get the textarea and add event listener
-      const textArea = document.querySelector(
-        '.share-comment'
-      ) as HTMLTextAreaElement;
-      if (textArea) {
-        textArea.focus();
-        textArea.addEventListener('input', (e) => {
-          this.shareComment = (e.target as HTMLTextAreaElement).value;
-        });
-      }
-
-      // Add click event to share button
-      const shareBtn = document.querySelector(
-        '.share-btn'
-      ) as HTMLButtonElement;
-      if (shareBtn) {
-        shareBtn.addEventListener('click', () => this.submitShare());
-      }
-
-      // Add click event to share-external button
-      const shareExternalBtn = document.querySelector(
-        '.share-external-btn'
-      ) as HTMLButtonElement;
-      if (shareExternalBtn) {
-        shareExternalBtn.addEventListener('click', () =>
-          this.shareExternally()
-        );
-      }
-
-      // Add click event to cancel button
-      const cancelBtn = document.querySelector(
-        '.cancel-share-btn'
-      ) as HTMLButtonElement;
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
-          this.modalService.closeModal();
-        });
-      }
-    }, 0);
+    // Add modal content
+    this.renderShareModalContent();
   }
 
-  private getShareModalHTML(): string {
-    // Get user avatar and name for share preview
-    const userAvatar = this.currentUserId
-      ? this.post.user?.avatarUrl || '/assets/default-avatar.png'
-      : '/assets/default-avatar.png';
+  private renderShareModalContent(): void {
+    if (!this.modalElement) return;
 
-    const userName = this.post.user?.username || 'User';
+    // Clear existing content
+    this.modalElement.innerHTML = '';
 
-    return `
-      <div class="share-modal-overlay">
-        <div class="share-modal">
-          <div class="modal-header">
-            <h3>Share Post</h3>
-            <button class="close-btn">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          
-          <div class="modal-body">
-            <div class="share-tabs">
-              <button class="share-tab active" data-tab="repost">Repost</button>
-              <button class="share-tab" data-tab="external">Share Externally</button>
-            </div>
-            
-            <div class="share-tab-content">
-              <div class="original-post-preview">
-                <div class="preview-header">
-                  <img src="${
-                    this.post.user?.avatarUrl || '/assets/default-avatar.png'
-                  }" alt="User avatar" class="small-avatar">
-                  <div class="preview-user">
-                    <div class="preview-username">${
-                      this.post.user?.username || 'User'
-                    }</div>
-                    <div class="preview-time">${this.post.timeSince}</div>
-                  </div>
-                </div>
-                <div class="preview-content">${this.post.content}</div>
-                ${
-                  this.post.hasMedia
-                    ? '<div class="preview-media-indicator">Media content</div>'
-                    : ''
-                }
-              </div>
-              
-              <div id="repost-tab" class="tab-pane active">
-                <div class="share-comment-container">
-                  <textarea 
-                    placeholder="Add a comment to your repost..." 
-                    class="share-comment"
-                    ${this.isSharing ? 'disabled' : ''}
-                  >${this.shareComment}</textarea>
-                </div>
-                
-                <div class="share-options">
-                  <button class="share-btn" ${this.isSharing ? 'disabled' : ''}>
-                    ${
-                      this.isSharing
-                        ? '<span class="spinner"></span> Sharing...'
-                        : 'Repost'
-                    }
-                  </button>
-                </div>
-              </div>
-              
-              <div id="external-tab" class="tab-pane">
-                <div class="external-share-options">
-                  <p>Share this post with others:</p>
-                  <div class="share-link-container">
-                    <input type="text" class="share-link" readonly value="${
-                      window.location.origin
-                    }/post/${this.post.id}">
-                    <button class="copy-link-btn">Copy</button>
-                  </div>
-                  
-                  <div class="share-buttons">
-                    <button class="share-external-btn">
-                      <span class="material-icons">share</span>
-                      Share
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-footer">
-            <button class="cancel-share-btn" ${
-              this.isSharing ? 'disabled' : ''
-            }>Cancel</button>
-          </div>
-        </div>
-      </div>
-    `;
+    // Create modal content
+    const modalContent = this.renderer.createElement('div');
+    this.renderer.addClass(modalContent, 'share-modal');
+
+    // Header
+    const header = this.renderer.createElement('div');
+    this.renderer.addClass(header, 'modal-header');
+
+    const title = this.renderer.createElement('h3');
+    this.renderer.appendChild(title, this.renderer.createText('Share Post'));
+
+    const closeBtn = this.renderer.createElement('button');
+    this.renderer.addClass(closeBtn, 'close-btn');
+    this.renderer.listen(closeBtn, 'click', () => this.closeShareModal());
+
+    const closeIcon = this.renderer.createElement('span');
+    this.renderer.addClass(closeIcon, 'material-icons');
+    this.renderer.appendChild(closeIcon, this.renderer.createText('close'));
+
+    this.renderer.appendChild(closeBtn, closeIcon);
+    this.renderer.appendChild(header, title);
+    this.renderer.appendChild(header, closeBtn);
+    this.renderer.appendChild(modalContent, header);
+
+    // Tabs
+    const tabsDiv = this.renderer.createElement('div');
+    this.renderer.addClass(tabsDiv, 'share-tabs');
+
+    const repostTab = this.renderer.createElement('button');
+    this.renderer.addClass(repostTab, 'share-tab');
+    if (this.shareTab === 'repost') this.renderer.addClass(repostTab, 'active');
+    this.renderer.appendChild(repostTab, this.renderer.createText('Repost'));
+    this.renderer.listen(repostTab, 'click', () => {
+      this.shareTab = 'repost';
+      this.renderShareModalContent();
+    });
+
+    const externalTab = this.renderer.createElement('button');
+    this.renderer.addClass(externalTab, 'share-tab');
+    if (this.shareTab === 'external')
+      this.renderer.addClass(externalTab, 'active');
+    this.renderer.appendChild(
+      externalTab,
+      this.renderer.createText('Share Externally')
+    );
+    this.renderer.listen(externalTab, 'click', () => {
+      this.shareTab = 'external';
+      this.renderShareModalContent();
+    });
+
+    this.renderer.appendChild(tabsDiv, repostTab);
+    this.renderer.appendChild(tabsDiv, externalTab);
+    this.renderer.appendChild(modalContent, tabsDiv);
+
+    // Body
+    const body = this.renderer.createElement('div');
+    this.renderer.addClass(body, 'modal-body');
+
+    // Post preview
+    const previewDiv = this.renderer.createElement('div');
+    this.renderer.addClass(previewDiv, 'original-post-preview');
+
+    const previewHeader = this.renderer.createElement('div');
+    this.renderer.addClass(previewHeader, 'preview-header');
+
+    const avatar = this.renderer.createElement('img');
+    this.renderer.setAttribute(
+      avatar,
+      'src',
+      this.post.user?.avatarUrl || '/assets/default-avatar.png'
+    );
+    this.renderer.setAttribute(avatar, 'alt', 'User avatar');
+    this.renderer.addClass(avatar, 'small-avatar');
+
+    const previewUser = this.renderer.createElement('div');
+    this.renderer.addClass(previewUser, 'preview-user');
+
+    const usernameDiv = this.renderer.createElement('div');
+    this.renderer.addClass(usernameDiv, 'preview-username');
+    this.renderer.appendChild(
+      usernameDiv,
+      this.renderer.createText(this.post.user?.username || 'User')
+    );
+
+    const timeDiv = this.renderer.createElement('div');
+    this.renderer.addClass(timeDiv, 'preview-time');
+    this.renderer.appendChild(
+      timeDiv,
+      this.renderer.createText(this.post.timeSince)
+    );
+
+    this.renderer.appendChild(previewUser, usernameDiv);
+    this.renderer.appendChild(previewUser, timeDiv);
+    this.renderer.appendChild(previewHeader, avatar);
+    this.renderer.appendChild(previewHeader, previewUser);
+    this.renderer.appendChild(previewDiv, previewHeader);
+
+    const previewContent = this.renderer.createElement('div');
+    this.renderer.addClass(previewContent, 'preview-content');
+    this.renderer.appendChild(
+      previewContent,
+      this.renderer.createText(this.post.content)
+    );
+    this.renderer.appendChild(previewDiv, previewContent);
+
+    if (this.post.hasMedia) {
+      const mediaIndicator = this.renderer.createElement('div');
+      this.renderer.addClass(mediaIndicator, 'preview-media-indicator');
+      this.renderer.appendChild(
+        mediaIndicator,
+        this.renderer.createText('Media content')
+      );
+      this.renderer.appendChild(previewDiv, mediaIndicator);
+    }
+
+    this.renderer.appendChild(body, previewDiv);
+
+    // Tab content
+    if (this.shareTab === 'repost') {
+      const repostPane = this.renderer.createElement('div');
+      this.renderer.addClass(repostPane, 'tab-pane');
+      this.renderer.addClass(repostPane, 'active');
+
+      const commentContainer = this.renderer.createElement('div');
+      this.renderer.addClass(commentContainer, 'share-comment-container');
+
+      const textarea = this.renderer.createElement('textarea');
+      this.renderer.addClass(textarea, 'share-comment');
+      this.renderer.setAttribute(
+        textarea,
+        'placeholder',
+        'Add a comment to your repost...'
+      );
+      if (this.isSharing)
+        this.renderer.setAttribute(textarea, 'disabled', 'true');
+      this.renderer.appendChild(
+        textarea,
+        this.renderer.createText(this.shareComment)
+      );
+      this.renderer.listen(textarea, 'input', (event) => {
+        this.shareComment = (event.target as HTMLTextAreaElement).value;
+      });
+
+      this.renderer.appendChild(commentContainer, textarea);
+      this.renderer.appendChild(repostPane, commentContainer);
+
+      const shareOptions = this.renderer.createElement('div');
+      this.renderer.addClass(shareOptions, 'share-options');
+
+      const shareBtn = this.renderer.createElement('button');
+      this.renderer.addClass(shareBtn, 'share-btn');
+      if (this.isSharing)
+        this.renderer.setAttribute(shareBtn, 'disabled', 'true');
+
+      if (this.isSharing) {
+        const spinner = this.renderer.createElement('span');
+        this.renderer.addClass(spinner, 'spinner');
+        this.renderer.appendChild(shareBtn, spinner);
+        this.renderer.appendChild(
+          shareBtn,
+          this.renderer.createText(' Sharing...')
+        );
+      } else {
+        this.renderer.appendChild(shareBtn, this.renderer.createText('Repost'));
+      }
+
+      this.renderer.listen(shareBtn, 'click', () => this.submitShare());
+
+      this.renderer.appendChild(shareOptions, shareBtn);
+      this.renderer.appendChild(repostPane, shareOptions);
+      this.renderer.appendChild(body, repostPane);
+    } else {
+      const externalPane = this.renderer.createElement('div');
+      this.renderer.addClass(externalPane, 'tab-pane');
+      this.renderer.addClass(externalPane, 'active');
+
+      const externalOptions = this.renderer.createElement('div');
+      this.renderer.addClass(externalOptions, 'external-share-options');
+
+      const shareText = this.renderer.createElement('p');
+      this.renderer.appendChild(
+        shareText,
+        this.renderer.createText('Share this post with others:')
+      );
+
+      const linkContainer = this.renderer.createElement('div');
+      this.renderer.addClass(linkContainer, 'share-link-container');
+
+      const linkInput = this.renderer.createElement('input');
+      this.renderer.addClass(linkInput, 'share-link');
+      this.renderer.setAttribute(linkInput, 'type', 'text');
+      this.renderer.setAttribute(linkInput, 'readonly', 'true');
+      this.renderer.setAttribute(
+        linkInput,
+        'value',
+        `${window.location.origin}/post/${this.post.id}`
+      );
+
+      const copyBtn = this.renderer.createElement('button');
+      this.renderer.addClass(copyBtn, 'copy-link-btn');
+      this.renderer.appendChild(copyBtn, this.renderer.createText('Copy'));
+      this.renderer.listen(copyBtn, 'click', () => this.copyLinkToClipboard());
+
+      this.renderer.appendChild(linkContainer, linkInput);
+      this.renderer.appendChild(linkContainer, copyBtn);
+
+      const shareButtons = this.renderer.createElement('div');
+      this.renderer.addClass(shareButtons, 'share-buttons');
+
+      const externalShareBtn = this.renderer.createElement('button');
+      this.renderer.addClass(externalShareBtn, 'share-external-btn');
+
+      const shareIcon = this.renderer.createElement('span');
+      this.renderer.addClass(shareIcon, 'material-icons');
+      this.renderer.appendChild(shareIcon, this.renderer.createText('share'));
+
+      this.renderer.appendChild(externalShareBtn, shareIcon);
+      this.renderer.appendChild(
+        externalShareBtn,
+        this.renderer.createText(' Share')
+      );
+      this.renderer.listen(externalShareBtn, 'click', () =>
+        this.shareExternally()
+      );
+
+      this.renderer.appendChild(shareButtons, externalShareBtn);
+      this.renderer.appendChild(externalOptions, shareText);
+      this.renderer.appendChild(externalOptions, linkContainer);
+      this.renderer.appendChild(externalOptions, shareButtons);
+      this.renderer.appendChild(externalPane, externalOptions);
+      this.renderer.appendChild(body, externalPane);
+    }
+
+    this.renderer.appendChild(modalContent, body);
+
+    // Footer
+    const footer = this.renderer.createElement('div');
+    this.renderer.addClass(footer, 'modal-footer');
+
+    const cancelBtn = this.renderer.createElement('button');
+    this.renderer.addClass(cancelBtn, 'cancel-share-btn');
+    if (this.isSharing)
+      this.renderer.setAttribute(cancelBtn, 'disabled', 'true');
+    this.renderer.appendChild(cancelBtn, this.renderer.createText('Cancel'));
+    this.renderer.listen(cancelBtn, 'click', () => this.closeShareModal());
+
+    this.renderer.appendChild(footer, cancelBtn);
+    this.renderer.appendChild(modalContent, footer);
+
+    // Add modal to the overlay
+    this.renderer.appendChild(this.modalElement, modalContent);
+  }
+
+  closeShareModal(): void {
+    if (this.modalElement) {
+      this.renderer.removeChild(document.body, this.modalElement);
+      this.modalElement = null;
+    }
+    this.isShareModalOpen = false;
+    this.cdr.markForCheck();
   }
 
   submitShare(): void {
     if (this.isSharing) return;
 
     this.isSharing = true;
+    this.renderShareModalContent(); // Update UI to show loading state
     this.cdr.markForCheck();
-
-    // Update the button state in the DOM
-    const shareBtn = document.querySelector('.share-btn') as HTMLButtonElement;
-    if (shareBtn) {
-      shareBtn.disabled = true;
-      shareBtn.innerHTML = '<span class="spinner"></span> Sharing...';
-    }
 
     this.postService
       .sharePost(this.post.id, this.shareComment)
@@ -519,7 +672,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
         }),
         finalize(() => {
           this.isSharing = false;
-          this.modalService.closeModal();
+          this.closeShareModal();
           this.cdr.markForCheck();
 
           // Refresh the feed if possible
@@ -533,15 +686,6 @@ export class PostCardComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Share error:', error);
-
-          // Reset UI state
-          const shareBtn = document.querySelector(
-            '.share-btn'
-          ) as HTMLButtonElement;
-          if (shareBtn) {
-            shareBtn.disabled = false;
-            shareBtn.innerHTML = 'Repost';
-          }
         },
       });
   }
@@ -569,7 +713,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
     const shareLink = `${window.location.origin}/post/${this.post.id}`;
     navigator.clipboard.writeText(shareLink).then(() => {
       alert('Link copied to clipboard!');
-      this.modalService.closeModal();
+      this.closeShareModal();
     });
   }
 
