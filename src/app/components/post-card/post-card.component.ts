@@ -6,13 +6,15 @@ import {
   EventEmitter,
   OnInit,
   OnDestroy,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Post } from '../../models';
 import { MediaDisplayComponent } from '../media-display/media-display.component';
 import { PostService } from '../../core/services/post.service';
 import { RouterModule } from '@angular/router';
-import { Subscription, forkJoin } from 'rxjs';
+import { Subscription, forkJoin, take, timer } from 'rxjs';
 import { Media } from '../../models';
 import { LikeService } from '../../core/services/like.service';
 import { CommentService } from '../../core/services/comment.service';
@@ -34,6 +36,7 @@ import {
   ],
   templateUrl: './post-card.component.html',
   styleUrls: ['./post-card.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PostCardComponent implements OnInit, OnDestroy {
   @Input() post!: Post;
@@ -47,24 +50,27 @@ export class PostCardComponent implements OnInit, OnDestroy {
   isLiked = false;
   likeCount = 0;
   commentCount = 0;
+  isLikeInProgress = false; // Flag to prevent multiple rapid clicks
+
   private userSubscription?: Subscription;
   private isAuthenticatedSubscription?: Subscription;
   private likeCountSubscription?: Subscription;
+  private likeStatusSubscription?: Subscription;
   private commentCountSubscription?: Subscription;
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private postService: PostService,
     private likeService: LikeService,
     private commentService: CommentService,
-    private store: Store
+    private store: Store,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     // Subscribe to user from store
     this.userSubscription = this.store.select(selectUser).subscribe((user) => {
       this.currentUserId = user?.id || null;
-      console.log('Current user ID:', this.currentUserId);
-
       if (this.currentUserId && this.post) {
         this.checkSavedStatus();
         this.checkLikeStatus();
@@ -75,15 +81,48 @@ export class PostCardComponent implements OnInit, OnDestroy {
     this.likeCountSubscription = this.likeService
       .getPostLikesObservable(this.post.id)
       .subscribe((count) => {
+        console.log(`Like count updated for post ${this.post.id}: ${count}`);
         this.likeCount = count;
+        this.cdr.markForCheck();
       });
 
-    // Get comment count using new reactive observable
+    // Get like status as continuous observable instead of one-time check
+    this.likeStatusSubscription = this.likeService
+      .getUserPostLikeObservable(this.post.id)
+      .subscribe((liked) => {
+        console.log(`Like status updated for post ${this.post.id}: ${liked}`);
+        if (this.isLiked !== liked) {
+          this.isLiked = liked;
+          this.cdr.markForCheck();
+        }
+      });
+
+    // Get comment count using reactive observable
     this.commentCountSubscription = this.commentService
       .getCommentCountObservable(this.post.id)
       .subscribe((count) => {
         this.commentCount = count;
+        this.cdr.markForCheck();
       });
+
+    // Force periodic checks to ensure UI stays in sync
+    const syncInterval = timer(2000, 5000).subscribe(() => {
+      if (this.currentUserId) {
+        this.likeService
+          .hasUserLikedPost(this.post.id)
+          .subscribe((actualLiked) => {
+            if (this.isLiked !== actualLiked) {
+              console.log(
+                `Correcting like state mismatch for post ${this.post.id}: UI=${this.isLiked}, Actual=${actualLiked}`
+              );
+              this.isLiked = actualLiked;
+              this.cdr.markForCheck();
+            }
+          });
+      }
+    });
+
+    this.subscriptions.push(syncInterval);
   }
 
   ngOnDestroy(): void {
@@ -100,9 +139,16 @@ export class PostCardComponent implements OnInit, OnDestroy {
       this.likeCountSubscription.unsubscribe();
     }
 
+    if (this.likeStatusSubscription) {
+      this.likeStatusSubscription.unsubscribe();
+    }
+
     if (this.commentCountSubscription) {
       this.commentCountSubscription.unsubscribe();
     }
+
+    // Clean up any other subscriptions
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
 
   checkSavedStatus(): void {
@@ -112,6 +158,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
       .isPostSaved(this.post.id, this.currentUserId)
       .subscribe((isSaved) => {
         this.isSaved = isSaved;
+        this.cdr.markForCheck();
       });
   }
 
@@ -119,42 +166,81 @@ export class PostCardComponent implements OnInit, OnDestroy {
     if (!this.currentUserId) return;
 
     this.likeService.hasUserLikedPost(this.post.id).subscribe((isLiked) => {
-      this.isLiked = isLiked;
-      console.log('Post liked status:', isLiked);
+      if (this.isLiked !== isLiked) {
+        console.log(
+          `Setting initial like status for post ${this.post.id}: ${isLiked}`
+        );
+        this.isLiked = isLiked;
+        this.cdr.markForCheck();
+      }
     });
   }
 
   toggleLike(): void {
-    console.log('Toggle like clicked');
+    // Prevent rapid clicking
+    if (this.isLikeInProgress) {
+      console.log('Like operation already in progress, ignoring click');
+      return;
+    }
 
-    // Check authentication state from store
-    this.isAuthenticatedSubscription = this.store
+    // Check authentication first
+    this.store
       .select(selectIsAuthenticated)
+      .pipe(take(1))
       .subscribe((isAuthenticated) => {
         if (!isAuthenticated) {
           console.log('User not authenticated');
           return;
         }
 
-        if (this.isLiked) {
-          console.log('Unliking post');
+        this.isLikeInProgress = true;
+
+        // Set a timeout to reset the flag even if operations fail
+        setTimeout(() => {
+          this.isLikeInProgress = false;
+        }, 1500);
+
+        // Update UI immediately for better feedback
+        const wasLiked = this.isLiked;
+        this.isLiked = !wasLiked;
+        this.likeCount = wasLiked
+          ? Math.max(0, this.likeCount - 1)
+          : this.likeCount + 1;
+        this.cdr.markForCheck();
+
+        if (wasLiked) {
+          console.log('Unliking post, previously liked state:', wasLiked);
           this.likeService.unlikePost(this.post.id).subscribe({
             next: () => {
               console.log('Unlike successful');
-              this.isLiked = false;
-              // No need to update likeCount, the observable will handle it
+              this.isLikeInProgress = false;
+              this.cdr.markForCheck();
             },
-            error: (err) => console.error('Error unliking post:', err),
+            error: (err) => {
+              console.error('Error unliking post:', err);
+              // Revert the UI on error
+              this.isLiked = true;
+              this.likeCount = this.likeCount + 1;
+              this.isLikeInProgress = false;
+              this.cdr.markForCheck();
+            },
           });
         } else {
-          console.log('Liking post');
+          console.log('Liking post, previously liked state:', wasLiked);
           this.likeService.likePost(this.post.id).subscribe({
             next: () => {
               console.log('Like successful');
-              this.isLiked = true;
-              // No need to update likeCount, the observable will handle it
+              this.isLikeInProgress = false;
+              this.cdr.markForCheck();
             },
-            error: (err) => console.error('Error liking post:', err),
+            error: (err) => {
+              console.error('Error liking post:', err);
+              // Revert the UI on error
+              this.isLiked = false;
+              this.likeCount = Math.max(0, this.likeCount - 1);
+              this.isLikeInProgress = false;
+              this.cdr.markForCheck();
+            },
           });
         }
       });
@@ -163,54 +249,62 @@ export class PostCardComponent implements OnInit, OnDestroy {
   toggleComments(): void {
     console.log('Toggle comments clicked, current state:', this.showComments);
     this.showComments = !this.showComments;
-    console.log('New comments visibility state:', this.showComments);
+    this.cdr.markForCheck();
   }
 
   toggleSavePost(): void {
     this.store
       .select(selectIsAuthenticated)
+      .pipe(take(1))
       .subscribe((isAuthenticated) => {
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !this.currentUserId) {
           return;
         }
 
         if (this.isSaved) {
           this.postService
-            .unsavePost(this.post.id, this.currentUserId!)
+            .unsavePost(this.post.id, this.currentUserId)
             .subscribe(() => {
               this.isSaved = false;
+              this.cdr.markForCheck();
             });
         } else {
           this.postService
-            .savePost(this.post.id, this.currentUserId!)
+            .savePost(this.post.id, this.currentUserId)
             .subscribe(() => {
               this.isSaved = true;
+              this.cdr.markForCheck();
             });
         }
-      })
-      .unsubscribe();
+      });
   }
 
   hidePost(): void {
     this.store
       .select(selectIsAuthenticated)
+      .pipe(take(1))
       .subscribe((isAuthenticated) => {
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !this.currentUserId) {
           return;
         }
 
         this.postService
-          .hidePost(this.post.id, this.currentUserId!)
+          .hidePost(this.post.id, this.currentUserId)
           .subscribe(() => {
             this.isHidden = true;
+            this.cdr.markForCheck();
           });
-      })
-      .unsubscribe();
+      });
   }
 
   deletePost(): void {
-    this.postService.deletePost(this.post.id).subscribe(() => {
-      this.deleted.emit(this.post.id);
+    this.postService.deletePost(this.post.id).subscribe({
+      next: () => {
+        this.deleted.emit(this.post.id);
+      },
+      error: (err) => {
+        console.error('Error deleting post:', err);
+      },
     });
   }
 
@@ -224,6 +318,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
   toggleActions(): void {
     this.showActions = !this.showActions;
+    this.cdr.markForCheck();
   }
 
   get isPostOwner(): boolean {

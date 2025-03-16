@@ -288,18 +288,10 @@ export class CommentComponent implements OnInit, OnDestroy {
 
     const wasLiked = this.isLiked;
 
-    // Optimistic update
-    this.isLiked = !this.isLiked;
-    this.likeCount += wasLiked ? -1 : 1;
-    this.cdr.markForCheck();
-
     if (wasLiked) {
       this.likeService.unlikeComment(this.comment.id).subscribe({
         error: (err) => {
           console.error('Error unliking comment:', err);
-          // Revert on error
-          this.isLiked = true;
-          this.likeCount += 1;
           this.cdr.markForCheck();
         },
       });
@@ -307,9 +299,6 @@ export class CommentComponent implements OnInit, OnDestroy {
       this.likeService.likeComment(this.comment.id).subscribe({
         error: (err) => {
           console.error('Error liking comment:', err);
-          // Revert on error
-          this.isLiked = false;
-          this.likeCount -= 1;
           this.cdr.markForCheck();
         },
       });

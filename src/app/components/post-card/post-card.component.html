@@ -67,7 +67,9 @@
 
     <!-- Action buttons -->
     <div class="post-actions">
-        <button class="action-btn" [class.active]="isLiked" (click)="toggleLike()" aria-label="Like post">
+        <button class="action-btn" [class.active]="isLiked" [disabled]="isLikeInProgress"
+            [title]="isLikeInProgress ? 'Processing...' : (isLiked ? 'Unlike' : 'Like')" (click)="toggleLike()"
+            aria-label="Like post">
             <span class="material-icons">
                 {{ isLiked ? 'favorite' : 'favorite_border' }}
             </span>
