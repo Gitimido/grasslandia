@@ -1,0 +1,41 @@
+<!-- src/app/pages/bookmarks/bookmarks.component.html -->
+<div class="bookmarks-container" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <div class="content-layout">
+        <div class="main-content">
+            <div class="bookmarks-header">
+                <h1>Your Bookmarks</h1>
+                <p>Posts you've saved for later</p>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="isLoading" class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Loading bookmarks...</p>
+            </div>
+
+            <!-- Error state -->
+            <div *ngIf="error" class="error-container">
+                <p class="error-message">{{ error }}</p>
+                <button (click)="loadSavedPosts()" class="retry-button">Try Again</button>
+            </div>
+
+            <!-- Empty state -->
+            <div *ngIf="!isLoading && !error && savedPosts.length === 0" class="empty-container">
+                <div class="empty-state">
+                    <div class="empty-icon">📑</div>
+                    <h3>No bookmarks yet</h3>
+                    <p>When you save posts, they'll appear here for easy access.</p>
+                </div>
+            </div>
+
+            <!-- Bookmarks list -->
+            <div *ngIf="!isLoading && !error && savedPosts.length > 0" class="bookmarks-feed">
+                <div *ngFor="let post of savedPosts; let i = index" class="post-card-item" style="--index: {{i}};">
+                    <app-post-card [post]="post" (deleted)="handlePostDeleted($event)"
+                        (unsaved)="handleUnsavedPost($event)">
+                    </app-post-card>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

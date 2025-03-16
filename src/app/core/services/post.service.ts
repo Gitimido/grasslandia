@@ -174,20 +174,75 @@ export class PostService {
   /**
    * Get all saved posts for a user
    */
+
+  /**
+   * Get all saved posts for a user
+   */
   getSavedPosts(userId: string): Observable<Post[]> {
-    // Retrieves all saved posts with a join on the posts table
+    // Improved query to include shared post data
     return from(
       this.supabase
         .from('user_saved_posts')
-        .select('post_id, posts(*)')
+        .select(
+          `
+        post_id, 
+        posts:post_id(
+          *, 
+          users:user_id(*),
+          shared_post:shared_post_id(*, users:user_id(*))
+        )
+      `
+        )
         .eq('user_id', userId)
         .order('saved_at', { ascending: false })
     ).pipe(
-      map(({ data, error }) => {
+      switchMap(({ data, error }) => {
         if (error) throw error;
-        return data.map((item) => item.posts) as unknown as Post[];
+
+        if (!data || data.length === 0) {
+          return of([]);
+        }
+
+        // Map posts from Supabase response
+        const posts = data.map((item) => this.mapPostFromSupabase(item.posts));
+
+        // Fetch media for all posts (including shared posts)
+        const mediaRequests: Observable<Post>[] = [];
+
+        // Regular post media
+        posts.forEach((post) => {
+          mediaRequests.push(
+            this.getPostMedia(post.id).pipe(
+              map((media) => {
+                post.media = media;
+                return post;
+              })
+            )
+          );
+
+          // Also fetch media for shared posts
+          if (post.sharedPostId && post.sharedPost) {
+            mediaRequests.push(
+              this.getPostMedia(post.sharedPostId).pipe(
+                map((media) => {
+                  if (post.sharedPost) {
+                    post.sharedPost.media = media;
+                  }
+                  return post;
+                })
+              )
+            );
+          }
+        });
+
+        return forkJoin(mediaRequests).pipe(
+          catchError(() => of(posts)) // Return posts without media if media fetch fails
+        );
       }),
-      catchError((error) => throwError(() => error))
+      catchError((error) => {
+        console.error('Error fetching saved posts:', error);
+        return throwError(() => error);
+      })
     );
   }
 

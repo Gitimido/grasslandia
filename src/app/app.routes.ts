@@ -22,6 +22,14 @@ export const routes: Routes = [
         (m) => m.SignUpComponent
       ),
   },
+  // In src/app/app.routes.ts, ensure there's a route for bookmarks:
+  {
+    path: 'bookmarks',
+    loadComponent: () =>
+      import('./pages/bookmarks/bookmarks.component').then(
+        (m) => m.BookmarksComponent
+      ),
+  },
   {
     path: 'profile/:username',
     component: ProfileComponent,

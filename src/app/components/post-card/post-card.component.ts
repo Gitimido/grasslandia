@@ -46,6 +46,7 @@ import { FormsModule } from '@angular/forms';
 export class PostCardComponent implements OnInit, OnDestroy {
   @Input() post!: Post;
   @Output() deleted = new EventEmitter<string>();
+  @Output() unsaved = new EventEmitter<string>();
 
   isSaved = false;
   isHidden = false;
@@ -311,6 +312,8 @@ export class PostCardComponent implements OnInit, OnDestroy {
             .unsavePost(this.post.id, this.currentUserId)
             .subscribe(() => {
               this.isSaved = false;
+              // Emit event when post is unsaved
+              this.unsaved.emit(this.post.id);
               this.cdr.markForCheck();
             });
         } else {
