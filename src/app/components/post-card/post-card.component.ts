@@ -49,6 +49,8 @@ export class PostCardComponent implements OnInit, OnDestroy {
   commentCount = 0;
   private userSubscription?: Subscription;
   private isAuthenticatedSubscription?: Subscription;
+  private likeCountSubscription?: Subscription;
+  private commentCountSubscription?: Subscription;
 
   constructor(
     private postService: PostService,
@@ -69,8 +71,19 @@ export class PostCardComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Get counts
-    this.getCounts();
+    // Get like count using observable
+    this.likeCountSubscription = this.likeService
+      .getPostLikesObservable(this.post.id)
+      .subscribe((count) => {
+        this.likeCount = count;
+      });
+
+    // Get comment count using new reactive observable
+    this.commentCountSubscription = this.commentService
+      .getCommentCountObservable(this.post.id)
+      .subscribe((count) => {
+        this.commentCount = count;
+      });
   }
 
   ngOnDestroy(): void {
@@ -81,6 +94,14 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
     if (this.isAuthenticatedSubscription) {
       this.isAuthenticatedSubscription.unsubscribe();
+    }
+
+    if (this.likeCountSubscription) {
+      this.likeCountSubscription.unsubscribe();
+    }
+
+    if (this.commentCountSubscription) {
+      this.commentCountSubscription.unsubscribe();
     }
   }
 
@@ -103,18 +124,6 @@ export class PostCardComponent implements OnInit, OnDestroy {
     });
   }
 
-  getCounts(): void {
-    // Use forkJoin to get both counts in parallel
-    forkJoin({
-      likes: this.likeService.getPostLikeCount(this.post.id),
-      comments: this.commentService.getCommentCount(this.post.id),
-    }).subscribe(({ likes, comments }) => {
-      this.likeCount = likes;
-      this.commentCount = comments;
-      console.log(`Post has ${likes} likes and ${comments} comments`);
-    });
-  }
-
   toggleLike(): void {
     console.log('Toggle like clicked');
 
@@ -133,7 +142,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
             next: () => {
               console.log('Unlike successful');
               this.isLiked = false;
-              this.likeCount--;
+              // No need to update likeCount, the observable will handle it
             },
             error: (err) => console.error('Error unliking post:', err),
           });
@@ -143,7 +152,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
             next: () => {
               console.log('Like successful');
               this.isLiked = true;
-              this.likeCount++;
+              // No need to update likeCount, the observable will handle it
             },
             error: (err) => console.error('Error liking post:', err),
           });

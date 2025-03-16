@@ -36,6 +36,14 @@ export class CommentService implements OnDestroy {
   // Track loaded comments for better state management
   private loadedCommentIds = new Set<string>();
 
+  // New BehaviorSubject for comment counts
+  private commentCountsSubject = new BehaviorSubject<{
+    [postId: string]: number;
+  }>({});
+
+  // Track recently created comments to prevent double counting
+  private recentlyCreatedComments = new Set<string>();
+
   constructor(private authService: AuthService, private store: Store) {
     this.supabase = createClient(
       environment.supabaseUrl,
@@ -75,6 +83,17 @@ export class CommentService implements OnDestroy {
           console.log('Comment change detected:', payload);
 
           if (payload.eventType === 'INSERT') {
+            // Check if this is a comment we just created (avoid double counting)
+            const commentId = payload.new['id'];
+            if (this.recentlyCreatedComments.has(commentId)) {
+              console.log(
+                'Skipping realtime update for recently created comment:',
+                commentId
+              );
+              this.recentlyCreatedComments.delete(commentId);
+              return;
+            }
+
             // Get additional user data for the comment
             this.enrichCommentWithUserData(payload.new).subscribe((comment) => {
               // Track this comment as loaded
@@ -82,6 +101,15 @@ export class CommentService implements OnDestroy {
 
               // Dispatch to store
               this.store.dispatch(CommentsActions.commentAdded({ comment }));
+
+              // Update comment count for the associated post
+              if (!comment.parentId) {
+                const currentCounts = this.commentCountsSubject.value;
+                this.commentCountsSubject.next({
+                  ...currentCounts,
+                  [comment.postId]: (currentCounts[comment.postId] || 0) + 1,
+                });
+              }
             });
           } else if (payload.eventType === 'UPDATE') {
             // Get additional user data for the comment
@@ -99,6 +127,16 @@ export class CommentService implements OnDestroy {
 
             // Remove from tracking
             this.loadedCommentIds.delete(payload.old['id']);
+
+            // Update comment count for the associated post if it's a top-level comment
+            if (!payload.old['parent_id']) {
+              const postId = payload.old['post_id'];
+              const currentCounts = this.commentCountsSubject.value;
+              this.commentCountsSubject.next({
+                ...currentCounts,
+                [postId]: Math.max(0, (currentCounts[postId] || 0) - 1),
+              });
+            }
           }
         }
       )
@@ -115,6 +153,7 @@ export class CommentService implements OnDestroy {
 
     // Reset tracking
     this.loadedCommentIds.clear();
+    this.recentlyCreatedComments.clear();
   }
 
   // Helper to enrich a comment with user data
@@ -217,6 +256,10 @@ export class CommentService implements OnDestroy {
           throw new Error('Failed to create comment');
         }
 
+        // Add the new comment ID to our tracking set to prevent double counting
+        const commentId = data[0].id;
+        this.recentlyCreatedComments.add(commentId);
+
         // Now fetch user data to include with the comment
         return from(
           this.supabase
@@ -252,6 +295,15 @@ export class CommentService implements OnDestroy {
               })
             );
 
+            // Update comment count if it's a top-level comment (not a reply)
+            if (!parentId) {
+              const currentCounts = this.commentCountsSubject.value;
+              this.commentCountsSubject.next({
+                ...currentCounts,
+                [postId]: (currentCounts[postId] || 0) + 1,
+              });
+            }
+
             return newComment;
           })
         );
@@ -269,6 +321,23 @@ export class CommentService implements OnDestroy {
         return throwError(() => error);
       })
     );
+  }
+
+  // New method to get reactive comment count
+  getCommentCountObservable(postId: string): Observable<number> {
+    // First load the initial count
+    this.getCommentCount(postId).subscribe((count) => {
+      const currentCounts = this.commentCountsSubject.value;
+      this.commentCountsSubject.next({
+        ...currentCounts,
+        [postId]: count,
+      });
+    });
+
+    // Return the observable that will update in real-time
+    return this.commentCountsSubject
+      .asObservable()
+      .pipe(map((counts) => counts[postId] || 0));
   }
 
   /**
@@ -298,15 +367,19 @@ export class CommentService implements OnDestroy {
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        if (!data || data.length === 0) return [];
 
-        const comments = data.map((comment) => {
-          // Track this comment as loaded
-          this.loadedCommentIds.add(comment.id);
-          return this.mapComment(comment);
-        });
+        // Initialize empty array (different from original code)
+        let comments: Comment[] = [];
 
-        // Dispatch success action
+        if (data && data.length > 0) {
+          comments = data.map((comment) => {
+            // Track this comment as loaded
+            this.loadedCommentIds.add(comment.id);
+            return this.mapComment(comment);
+          });
+        }
+
+        // Dispatch success action (always, even with empty array)
         this.store.dispatch(
           CommentsActions.loadCommentsSuccess({
             postId,
@@ -330,6 +403,7 @@ export class CommentService implements OnDestroy {
       })
     );
   }
+
   /**
    * Get comment replies with improved error handling and tracking
    */
@@ -364,30 +438,25 @@ export class CommentService implements OnDestroy {
               throw error;
             }
 
-            if (!data || data.length === 0) {
-              console.log(`No replies found for comment ${commentId}`);
-              // Still dispatch success with empty array
-              this.store.dispatch(
-                CommentsActions.loadRepliesSuccess({
-                  commentId,
-                  replies: [],
-                })
+            // Initialize with empty array
+            let replies: Comment[] = [];
+
+            if (data && data.length > 0) {
+              console.log(
+                `Found ${data.length} replies for comment ${commentId}`
               );
-              return [];
+
+              // Process the replies
+              replies = data.map((comment) => {
+                // Track this comment as loaded
+                this.loadedCommentIds.add(comment.id);
+                return this.mapComment(comment);
+              });
+            } else {
+              console.log(`No replies found for comment ${commentId}`);
             }
 
-            console.log(
-              `Found ${data.length} replies for comment ${commentId}`
-            );
-
-            // Process the replies
-            const replies = data.map((comment) => {
-              // Track this comment as loaded
-              this.loadedCommentIds.add(comment.id);
-              return this.mapComment(comment);
-            });
-
-            // Dispatch success action
+            // Always dispatch success action, even with empty array
             this.store.dispatch(
               CommentsActions.loadRepliesSuccess({
                 commentId,
@@ -546,6 +615,15 @@ export class CommentService implements OnDestroy {
 
                 // Remove from our tracking
                 this.loadedCommentIds.delete(commentId);
+
+                // Update comment count if it's a top-level comment
+                if (!parentId) {
+                  const currentCounts = this.commentCountsSubject.value;
+                  this.commentCountsSubject.next({
+                    ...currentCounts,
+                    [postId]: Math.max(0, (currentCounts[postId] || 0) - 1),
+                  });
+                }
 
                 // Dispatch success action
                 this.store.dispatch(

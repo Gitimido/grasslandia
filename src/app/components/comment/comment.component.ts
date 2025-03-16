@@ -411,6 +411,11 @@ export class CommentComponent implements OnInit, OnDestroy {
     this.commentService
       .updateComment(this.comment.id, pendingContent)
       .subscribe({
+        next: (updatedComment) => {
+          // Handle success - update with server response
+          this.comment = updatedComment;
+          this.cdr.markForCheck();
+        },
         error: (err) => {
           console.error('Error updating comment:', err);
           // Rollback on error

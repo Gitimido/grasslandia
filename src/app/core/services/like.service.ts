@@ -27,6 +27,10 @@ export class LikeService implements OnDestroy {
     [commentId: string]: boolean;
   }>({});
 
+  // Add these to track recently added/removed likes
+  private recentlyAddedLikes = new Set<string>(); // Format: "user_id:post:post_id" or "user_id:comment:comment_id"
+  private recentlyRemovedLikes = new Set<string>(); // Same format
+
   constructor(private authService: AuthService) {
     this.supabase = createClient(
       environment.supabaseUrl,
@@ -64,8 +68,46 @@ export class LikeService implements OnDestroy {
 
           // Handle different events
           if (payload.eventType === 'INSERT') {
+            const userId = payload.new['user_id'];
+            const postId = payload.new['post_id'];
+            const commentId = payload.new['comment_id'];
+
+            // Create tracking key based on content type
+            const trackingKey = postId
+              ? `${userId}:post:${postId}`
+              : `${userId}:comment:${commentId}`;
+
+            // Skip if this is a like we just added optimistically
+            if (this.recentlyAddedLikes.has(trackingKey)) {
+              console.log(
+                'Skipping realtime like insert, already handled locally:',
+                trackingKey
+              );
+              this.recentlyAddedLikes.delete(trackingKey);
+              return;
+            }
+
             this.handleLikeInsert(payload.new);
           } else if (payload.eventType === 'DELETE') {
+            const userId = payload.old['user_id'];
+            const postId = payload.old['post_id'];
+            const commentId = payload.old['comment_id'];
+
+            // Create tracking key based on content type
+            const trackingKey = postId
+              ? `${userId}:post:${postId}`
+              : `${userId}:comment:${commentId}`;
+
+            // Skip if this is an unlike we just processed optimistically
+            if (this.recentlyRemovedLikes.has(trackingKey)) {
+              console.log(
+                'Skipping realtime like delete, already handled locally:',
+                trackingKey
+              );
+              this.recentlyRemovedLikes.delete(trackingKey);
+              return;
+            }
+
             this.handleLikeDelete(payload.old);
           }
         }
@@ -78,6 +120,10 @@ export class LikeService implements OnDestroy {
       this.supabase.removeChannel(this.likesSubscription);
       this.likesSubscription = null;
     }
+
+    // Clean up tracking sets
+    this.recentlyAddedLikes.clear();
+    this.recentlyRemovedLikes.clear();
   }
 
   // Handle new like insertion
@@ -245,6 +291,10 @@ export class LikeService implements OnDestroy {
       return throwError(() => new Error('User not authenticated'));
     }
 
+    // Track this action to prevent double counting in realtime updates
+    const trackingKey = `${userId}:post:${postId}`;
+    this.recentlyAddedLikes.add(trackingKey);
+
     return from(
       this.supabase.from('likes').insert({
         user_id: userId,
@@ -267,8 +317,13 @@ export class LikeService implements OnDestroy {
           ...currentLikes,
           [postId]: (currentLikes[postId] || 0) + 1,
         });
+
+        // Add explicit return
+        return undefined;
       }),
       catchError((error) => {
+        // On error, remove from tracking so future like attempts will work
+        this.recentlyAddedLikes.delete(trackingKey);
         console.error('Error liking post:', error);
         return throwError(() => error);
       })
@@ -281,14 +336,25 @@ export class LikeService implements OnDestroy {
       return throwError(() => new Error('User not authenticated'));
     }
 
+    // Track this action to prevent double counting in realtime updates
+    const trackingKey = `${userId}:post:${postId}`;
+    this.recentlyRemovedLikes.add(trackingKey);
+
+    console.log(`Unliking post: ${postId}, userId: ${userId}`);
+
     return from(
       this.supabase
         .from('likes')
         .delete()
         .match({ user_id: userId, post_id: postId })
     ).pipe(
-      map(({ error }) => {
-        if (error) throw error;
+      map(({ error, data }) => {
+        if (error) {
+          console.error('Supabase error unliking post:', error);
+          throw error;
+        }
+
+        console.log(`Unlike result:`, data);
 
         // Update local state immediately for better UX
         const userLikes = this.userPostLikes.value;
@@ -302,8 +368,13 @@ export class LikeService implements OnDestroy {
           ...currentLikes,
           [postId]: Math.max(0, (currentLikes[postId] || 0) - 1),
         });
+
+        // Add explicit return
+        return undefined;
       }),
       catchError((error) => {
+        // On error, remove from tracking so future unlike attempts will work
+        this.recentlyRemovedLikes.delete(trackingKey);
         console.error('Error unliking post:', error);
         return throwError(() => error);
       })
@@ -357,6 +428,10 @@ export class LikeService implements OnDestroy {
       return throwError(() => new Error('User not authenticated'));
     }
 
+    // Track this action to prevent double counting in realtime updates
+    const trackingKey = `${userId}:comment:${commentId}`;
+    this.recentlyAddedLikes.add(trackingKey);
+
     return from(
       this.supabase.from('likes').insert({
         user_id: userId,
@@ -379,8 +454,13 @@ export class LikeService implements OnDestroy {
           ...currentLikes,
           [commentId]: (currentLikes[commentId] || 0) + 1,
         });
+
+        // Add explicit return
+        return undefined;
       }),
       catchError((error) => {
+        // On error, remove from tracking
+        this.recentlyAddedLikes.delete(trackingKey);
         console.error('Error liking comment:', error);
         return throwError(() => error);
       })
@@ -392,6 +472,10 @@ export class LikeService implements OnDestroy {
     if (!userId) {
       return throwError(() => new Error('User not authenticated'));
     }
+
+    // Track this action to prevent double counting in realtime updates
+    const trackingKey = `${userId}:comment:${commentId}`;
+    this.recentlyRemovedLikes.add(trackingKey);
 
     return from(
       this.supabase
@@ -414,8 +498,13 @@ export class LikeService implements OnDestroy {
           ...currentLikes,
           [commentId]: Math.max(0, (currentLikes[commentId] || 0) - 1),
         });
+
+        // Add explicit return
+        return undefined;
       }),
       catchError((error) => {
+        // On error, remove from tracking
+        this.recentlyRemovedLikes.delete(trackingKey);
         console.error('Error unliking comment:', error);
         return throwError(() => error);
       })
