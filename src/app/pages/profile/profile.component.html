@@ -23,7 +23,14 @@
             <div class="profile-info">
                 <div class="profile-avatar">
                     <img [src]="profile.avatarUrl || '/assets/default-avatar.png'" alt="Profile picture">
+
+                    <!-- Show the uploader component if this is the current user's profile -->
+                    <div *ngIf="isCurrentUser" class="avatar-update-overlay">
+                        <app-profile-picture-uploader
+                            (pictureChanged)="onProfilePictureChanged($event)"></app-profile-picture-uploader>
+                    </div>
                 </div>
+
 
                 <div class="profile-details">
                     <h1 class="profile-name">{{profile.fullName}}</h1>

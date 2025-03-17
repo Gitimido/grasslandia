@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { provideHttpClient } from '@angular/common/http'; // Add this import
 
 // Existing reducers
 import { userDataReducer } from './core/store/UserData/user-data.reducer';
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
+    provideHttpClient(), // Add this provider
     provideStore({
       userData: userDataReducer,
       auth: authReducer,

@@ -132,6 +132,15 @@
   word-break: break-word;
 }
 
+/* Media containers */
+.post-media-container,
+.shared-post-media-container {
+  margin: 0 0 12px;
+  border-radius: 0;
+  overflow: hidden;
+  max-height: 600px;
+}
+
 /* Styling for shared posts */
 .shared-indicator {
   display: flex;

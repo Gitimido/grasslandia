@@ -7,6 +7,7 @@ import { Media } from '../../models';
 import { Observable, from, throwError, forkJoin, of } from 'rxjs';
 import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { MediaService, MediaCategory } from './media.service';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +15,10 @@ import { AuthService } from './auth.service';
 export class PostService {
   private supabase: SupabaseClient;
 
-  constructor(private authService: AuthService) {
+  constructor(
+    private authService: AuthService,
+    private mediaService: MediaService
+  ) {
     this.supabase = createClient(
       environment.supabaseUrl,
       environment.supabaseKey
@@ -45,19 +49,6 @@ export class PostService {
         const post = this.mapPostFromSupabase(data);
 
         return post;
-      }),
-      catchError((error) => throwError(() => error))
-    );
-  }
-
-  /**
-   * Delete a post
-   */
-  deletePost(id: string): Observable<void> {
-    // Deletes a post by ID from the posts table
-    return from(this.supabase.from('posts').delete().eq('id', id)).pipe(
-      map(({ error }) => {
-        if (error) throw error;
       }),
       catchError((error) => throwError(() => error))
     );
@@ -383,10 +374,10 @@ export class PostService {
       .from('posts')
       .select(
         `
-        *, 
-        users:user_id(*),
-        shared_post:shared_post_id(*, users:user_id(*))
-      `
+      *, 
+      users:user_id(*),
+      shared_post:shared_post_id(*, users:user_id(*))
+    `
       )
       .order('created_at', { ascending: false })
       .limit(20);
@@ -413,36 +404,45 @@ export class PostService {
         // Map posts from Supabase response
         const posts = data.map((post) => this.mapPostFromSupabase(post));
 
-        // Fetch media for all posts (including shared posts)
-        const mediaRequests: Observable<Post>[] = [];
+        // Create observables to fetch media for each post
+        const postsWithMediaObservables = posts.map((post) => {
+          // Get media for the original post
+          return this.mediaService.getPostMedia(post.id).pipe(
+            map((mediaItems) => {
+              post.media = mediaItems;
 
-        // Regular post media
-        posts.forEach((post) => {
-          mediaRequests.push(
-            this.getPostMedia(post.id).pipe(
-              map((media) => {
-                post.media = media;
+              // If this is a shared post, also fetch media for the shared post
+              if (post.sharedPostId && post.sharedPost) {
                 return post;
-              })
-            )
-          );
+              }
 
-          // Also fetch media for shared posts
-          if (post.sharedPostId && post.sharedPost) {
-            mediaRequests.push(
-              this.getPostMedia(post.sharedPostId).pipe(
-                map((media) => {
-                  if (post.sharedPost) {
-                    post.sharedPost.media = media;
-                  }
-                  return post;
-                })
-              )
-            );
-          }
+              return post;
+            })
+          );
         });
 
-        return forkJoin(mediaRequests);
+        // Also fetch media for any shared posts
+        const sharedPostsWithMediaObservables = posts
+          .filter((post) => post.sharedPostId && post.sharedPost)
+          .map((post) => {
+            return this.mediaService.getPostMedia(post.sharedPostId!).pipe(
+              map((mediaItems) => {
+                if (post.sharedPost) {
+                  post.sharedPost.media = mediaItems;
+                }
+                return post;
+              })
+            );
+          });
+
+        // Combine all the observables
+        return forkJoin([
+          ...postsWithMediaObservables,
+          ...sharedPostsWithMediaObservables,
+        ]).pipe(
+          // Just return the original posts array - they've been updated with media
+          map(() => posts)
+        );
       }),
       catchError((error) => {
         console.error('Error fetching home feed:', error);
@@ -481,45 +481,6 @@ export class PostService {
     }
 
     return post;
-  }
-
-  /**
-   * Get media for a specific post
-   */
-  getPostMedia(postId: string): Observable<Media[]> {
-    // Fetches all media attachments for a post, ordered by index
-    return from(
-      this.supabase
-        .from('media')
-        .select('*')
-        .eq('post_id', postId)
-        .order('order_index', { ascending: true })
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          return [];
-        }
-
-        return data.map(
-          (item) =>
-            new Media({
-              id: item.id,
-              postId: item.post_id,
-              messageId: item.message_id,
-              url: item.url,
-              mediaType: item.media_type,
-              orderIndex: item.order_index,
-              createdAt: new Date(item.created_at),
-            })
-        );
-      }),
-      catchError((error) => {
-        console.error(`Error fetching media for post ${postId}:`, error);
-        return throwError(() => error);
-      })
-    );
   }
 
   /**
@@ -572,7 +533,6 @@ export class PostService {
       })
     );
   }
-
   /**
    * Add media to an existing post
    */
@@ -711,6 +671,70 @@ export class PostService {
         console.error('Error fetching posts by username:', error);
         return of([]);
       })
+    );
+  }
+
+  createPostWithMedia(post: Post, files: File[]): Observable<Post> {
+    // First create the post to get an ID
+    return this.createPost(post).pipe(
+      switchMap((createdPost) => {
+        if (!files || files.length === 0) {
+          return of(createdPost);
+        }
+
+        // Upload all media files
+        return this.mediaService
+          .uploadMultiplePostMedia(files, createdPost.id)
+          .pipe(
+            map((mediaItems) => {
+              createdPost.media = mediaItems;
+              return createdPost;
+            })
+          );
+      }),
+      catchError((error) => {
+        console.error('Error creating post with media:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get media for a post - this replaces the old getPostMedia method
+   */
+  getPostMedia(postId: string): Observable<Media[]> {
+    return this.mediaService.getPostMedia(postId);
+  }
+
+  /**
+   * Delete a post and all associated media
+   */
+  deletePost(id: string): Observable<void> {
+    // First get all media for this post to delete later
+    return this.mediaService.getPostMedia(id).pipe(
+      switchMap((media) => {
+        // Delete the post first
+        return from(this.supabase.from('posts').delete().eq('id', id)).pipe(
+          map(({ error }) => {
+            if (error) throw error;
+            return media;
+          })
+        );
+      }),
+      // Now delete all associated media
+      switchMap((media) => {
+        if (!media || media.length === 0) {
+          return of(undefined);
+        }
+
+        // Delete all media items
+        const deleteObservables = media.map((item) =>
+          this.mediaService.deleteMedia(item.id)
+        );
+
+        return forkJoin(deleteObservables).pipe(map(() => undefined));
+      }),
+      catchError((error) => throwError(() => error))
     );
   }
 }

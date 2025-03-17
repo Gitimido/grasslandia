@@ -215,7 +215,7 @@ export class LikeService implements OnDestroy {
         .eq('post_id', postId)
     )
       .pipe(
-        retry(3), // Retry up to 3 times if network issues
+        retry(3000), // Retry up to 3 times if network issues
         map(({ count, error }) => {
           if (error) throw error;
           return count || 0;
@@ -264,7 +264,7 @@ export class LikeService implements OnDestroy {
         .eq('comment_id', commentId)
     )
       .pipe(
-        retry(3),
+        retry(3000),
         map(({ count, error }) => {
           if (error) throw error;
           return count || 0;

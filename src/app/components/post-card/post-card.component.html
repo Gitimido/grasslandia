@@ -58,6 +58,11 @@
         {{ post.content }}
     </div>
 
+    <!-- Original post media (only show for non-shared posts) -->
+    <div *ngIf="post.media && post.media.length > 0 && !post.isSharedPost" class="post-media-container">
+        <app-media-display [media]="post.media"></app-media-display>
+    </div>
+
     <!-- Shared post content -->
     <div *ngIf="post.sharedPost" class="shared-post-container">
         <div class="shared-post-header">
@@ -75,12 +80,12 @@
             {{ post.sharedPost.content }}
         </div>
 
-        <!-- Media for the shared post -->
-        <app-media-display *ngIf="post.sharedPost.hasMedia" [media]="post.sharedPost.media"></app-media-display>
+        <!-- Media for the shared post - improved condition -->
+        <div *ngIf="post.sharedPost.media && post.sharedPost.media.length > 0 || hasSharedPostMedia"
+            class="shared-post-media-container">
+            <app-media-display [media]="post.sharedPost.media"></app-media-display>
+        </div>
     </div>
-
-    <!-- Original post media (only show for non-shared posts) -->
-    <app-media-display *ngIf="post.hasMedia && !post.isSharedPost" [media]="post.media"></app-media-display>
 
     <!-- Stats (likes, comments, shares) -->
     <div class="post-stats" *ngIf="likeCount > 0 || commentCount > 0 || sharesCount > 0">

@@ -16,6 +16,8 @@ import { PostCardComponent } from '../../components/post-card/post-card.componen
 import { FeedStyle } from '../../components/feed/feed-styles.enum';
 import { SideNavService } from '../../core/services/side-nav.service';
 import { Observable, of, switchMap, finalize, Subscription } from 'rxjs';
+import { ProfilePictureUploaderComponent } from '../../components/profile-picture-uploader/profile-picture-uploader.component';
+import { Media } from '../../models';
 
 @Component({
   selector: 'app-profile',
@@ -26,6 +28,7 @@ import { Observable, of, switchMap, finalize, Subscription } from 'rxjs';
     SideNavComponent,
     PostCardComponent,
     CreatePostComponent,
+    ProfilePictureUploaderComponent,
   ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
@@ -331,5 +334,28 @@ export class ProfileComponent implements OnInit {
         this.sendFriendRequest();
         break;
     }
+  }
+
+  onProfilePictureChanged(media: Media | null): void {
+    if (!this.profile) return;
+
+    const avatarUrl = media?.url || null;
+
+    // Update the UI immediately
+    this.profile.avatarUrl = avatarUrl ?? undefined;
+
+    // Update the database
+    this.userService
+      .updateUserProfilePicture(this.profile.id, avatarUrl)
+      .subscribe({
+        next: (updatedUser) => {
+          if (updatedUser) {
+            console.log('Profile picture updated successfully');
+          }
+        },
+        error: (error) => {
+          console.error('Error updating profile picture:', error);
+        },
+      });
   }
 }

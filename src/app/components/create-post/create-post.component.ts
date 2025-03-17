@@ -12,8 +12,21 @@ import { ModalService } from '../../core/services/model.service';
 import { PostService } from '../../core/services/post.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Post } from '../../models';
-import { catchError, finalize, of, Subscription } from 'rxjs';
-
+import {
+  catchError,
+  finalize,
+  forkJoin,
+  from,
+  map,
+  of,
+  Subscription,
+  switchMap,
+  throwError,
+} from 'rxjs';
+import { MediaService } from '../../core/services/media.service';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
+import { environment } from '../../../environment';
+import { Media } from '../../models';
 // Define available post types
 export enum PostType {
   TEXT = 'text',
@@ -54,7 +67,8 @@ export class CreatePostComponent implements OnInit, OnDestroy {
   constructor(
     private postService: PostService,
     private authService: AuthService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private mediaService: MediaService
   ) {}
 
   ngOnInit(): void {
@@ -487,12 +501,12 @@ export class CreatePostComponent implements OnInit, OnDestroy {
     this.showPrivacyOptions = false;
   }
 
-  // Handle file selection
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files) {
       // Convert FileList to Array and add to selectedFiles
       const newFiles = Array.from(input.files);
+      console.log('Files selected:', newFiles);
 
       // Set post type based on the file type
       if (newFiles.length > 0) {
@@ -507,9 +521,11 @@ export class CreatePostComponent implements OnInit, OnDestroy {
 
       // Update media preview in the DOM
       this.updateMediaPreview();
+
+      // Also update submit button state since we now have media
+      this.updateSubmitButtonState();
     }
   }
-
   // Update media preview in the modal
   private updateMediaPreview(): void {
     const previewContainer = document.getElementById('media-preview-container');
@@ -536,7 +552,6 @@ export class CreatePostComponent implements OnInit, OnDestroy {
     this.updateMediaPreview();
   }
 
-  // Submit the post
   submitPost(): void {
     // Don't submit if empty or already submitting
     if (
@@ -569,13 +584,134 @@ export class CreatePostComponent implements OnInit, OnDestroy {
       updatedAt: new Date(),
     } as any);
 
-    // If we have files, upload them first then create the post
-    if (this.selectedFiles.length > 0) {
-      this.uploadFilesAndCreatePost(newPost);
-    } else {
-      // Otherwise just create the text post
-      this.createTextPost(newPost);
-    }
+    // First create the post to get an ID
+    this.postService
+      .createPost(newPost)
+      .pipe(
+        catchError((error) => {
+          console.error('Error creating post:', error);
+          // Handle error...
+          this.error = 'Failed to create post. Please try again.';
+          this.updateErrorMessage();
+          return throwError(() => error);
+        }),
+        switchMap((createdPost) => {
+          console.log('Post created successfully:', createdPost);
+
+          // If no files to upload, return the created post
+          if (!this.selectedFiles || this.selectedFiles.length === 0) {
+            return of(createdPost);
+          }
+
+          console.log('Uploading', this.selectedFiles.length, 'files');
+
+          // Now directly upload and create media records the same way as profile images
+          const uploadPromises: Promise<any>[] = [];
+
+          // Process each file
+          this.selectedFiles.forEach((file, index) => {
+            // Create a unique filename with timestamp and random string
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(2, 7);
+            const extension = file.name.split('.').pop();
+            const fileName = `user/${userId}/post/${createdPost.id}/${timestamp}_${randomString}.${extension}`;
+
+            // We'll use FormData to upload to R2
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
+            formData.append('postId', createdPost.id);
+            formData.append(
+              'mediaType',
+              file.type.startsWith('image/') ? 'image' : 'video'
+            );
+            formData.append('mediaCategory', 'post');
+
+            // Upload using fetch directly (similar to profile image)
+            const uploadPromise = fetch(
+              'https://grasslandia-mediahandling.mohamedhazem789.workers.dev/api/media/upload',
+              {
+                method: 'POST',
+                body: formData,
+              }
+            )
+              .then((response) => response.json())
+              .then((result) => {
+                console.log('Upload result:', result);
+
+                if (!result.success) {
+                  throw new Error(result.error || 'Upload failed');
+                }
+
+                // Create a media record in Supabase
+                return this.supabase
+                  .from('media')
+                  .insert({
+                    post_id: createdPost.id,
+                    user_id: userId,
+                    url: result.url,
+                    media_type:
+                      result.mediaType || file.type.startsWith('image/')
+                        ? 'image'
+                        : 'video',
+                    order_index: index,
+                    created_at: new Date().toISOString(),
+                  })
+                  .select();
+              })
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('Error saving media record:', error);
+                  throw error;
+                }
+
+                console.log('Media record created:', data);
+                return data;
+              });
+
+            uploadPromises.push(uploadPromise);
+          });
+
+          // Wait for all uploads to complete
+          return from(Promise.all(uploadPromises)).pipe(
+            map((results) => {
+              console.log('All media uploaded successfully:', results);
+              return createdPost;
+            }),
+            catchError((error) => {
+              console.error('Error uploading media:', error);
+              this.error =
+                'Post created but there was an issue with media uploads.';
+              this.updateErrorMessage();
+              return of(createdPost);
+            })
+          );
+        }),
+        finalize(() => {
+          this.isSubmitting = false;
+          this.updateSubmitButtonState();
+        })
+      )
+      .subscribe({
+        next: (createdPost) => {
+          if (createdPost) {
+            console.log('Post creation complete');
+            this.postCreated.emit(createdPost);
+            this.resetForm();
+            this.closeModal();
+          }
+        },
+        error: (error) => {
+          console.error('Error in post creation flow:', error);
+          this.isSubmitting = false;
+          this.updateSubmitButtonState();
+        },
+      });
+  }
+
+  // Add this helper to access Supabase
+  private get supabase(): SupabaseClient {
+    return createClient(environment.supabaseUrl, environment.supabaseKey);
   }
 
   // Create a text-only post

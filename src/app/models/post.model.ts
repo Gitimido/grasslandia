@@ -22,7 +22,6 @@ export interface IPost {
   likes?: number;
   liked?: boolean;
 }
-
 export class Post implements IPost {
   id: string;
   userId: string;
@@ -53,7 +52,7 @@ export class Post implements IPost {
     this.createdAt = post.createdAt;
     this.updatedAt = post.updatedAt;
     this.user = post.user;
-    this.media = post.media;
+    this.media = post.media || [];
     this.comments = post.comments || [];
     this.likes = post.likes || 0;
     this.liked = post.liked || false;
@@ -71,8 +70,9 @@ export class Post implements IPost {
     }
   }
 
+  // Explicitly check for media array with length
   get hasMedia(): boolean {
-    return this.media !== undefined && this.media.length > 0;
+    return Array.isArray(this.media) && this.media.length > 0;
   }
 
   // New getter to check if this is a shared post

@@ -163,4 +163,43 @@ export class UserService {
       })
     );
   }
+
+  updateUserProfilePicture(
+    userId: string,
+    avatarUrl: string | null
+  ): Observable<User | null> {
+    return from(
+      this.supabase
+        .from('users')
+        .update({
+          avatar_url: avatarUrl,
+          updated_at: new Date(),
+        })
+        .eq('id', userId)
+        .select()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        if (!data || !data[0]) return null;
+
+        const userData = data[0];
+        return new User({
+          id: userData.id,
+          username: userData.username,
+          email: userData.email,
+          fullName: userData.full_name,
+          avatarUrl: userData.avatar_url,
+          bio: userData.bio,
+          theme: userData.theme,
+          privacySettings: userData.privacy_settings,
+          createdAt: new Date(userData.created_at),
+          updatedAt: new Date(userData.updated_at),
+        } as IUser);
+      }),
+      catchError((error) => {
+        console.error('Error updating user profile picture:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 }

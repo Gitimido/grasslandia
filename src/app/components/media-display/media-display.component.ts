@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IMedia, Media } from '../../models';
 
@@ -9,12 +9,13 @@ import { IMedia, Media } from '../../models';
   templateUrl: './media-display.component.html',
   styleUrl: './media-display.component.scss',
 })
-export class MediaDisplayComponent {
+export class MediaDisplayComponent implements OnChanges {
   // Accept IMedia[] but convert to Media[] internally for access to getters
   private _media: Media[] = [];
 
   @Input() set media(value: IMedia[] | undefined) {
-    if (value) {
+    console.log('Media-display received media:', value);
+    if (value && value.length > 0) {
       this._media = value.map((item) =>
         item instanceof Media ? item : new Media(item)
       );
@@ -29,12 +30,24 @@ export class MediaDisplayComponent {
 
   currentIndex = 0;
 
+  get hasMedia(): boolean {
+    return this._media && this._media.length > 0;
+  }
+
   get hasMultipleMedia(): boolean {
     return this.media.length > 1;
   }
 
   get currentMedia(): Media | null {
     return this.media[this.currentIndex] || null;
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['media']) {
+      console.log('Media-display media changed:', this._media);
+      // Reset current index when media changes
+      this.currentIndex = 0;
+    }
   }
 
   nextMedia(): void {

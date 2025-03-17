@@ -1,4 +1,3 @@
-// src/app/components/post-card/post-card.component.ts
 import {
   Component,
   Input,
@@ -57,6 +56,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
   likeCount = 0;
   commentCount = 0;
   isLikeInProgress = false; // Flag to prevent multiple rapid clicks
+  hasSharedPostMedia = false;
 
   // Share functionality
   sharesCount = 0;
@@ -150,7 +150,6 @@ export class PostCardComponent implements OnInit, OnDestroy {
     this.subscriptions.push(syncInterval);
 
     // Setup document click handler for modal
-    // Setup document click handler for modal
     this.renderer.listen('document', 'click', (event) => {
       if (this.isShareModalOpen && this.modalElement) {
         // Check if the click was on the overlay but NOT on the modal content
@@ -162,6 +161,67 @@ export class PostCardComponent implements OnInit, OnDestroy {
         }
       }
     });
+
+    // Add media loading specifically for this post
+    this.loadMediaForPost();
+  }
+
+  // Add this method to load media for the post
+  loadMediaForPost(): void {
+    console.log(`Loading media for post ${this.post.id}`);
+
+    // Load media for the current post
+    this.postService.getPostMedia(this.post.id).subscribe({
+      next: (mediaItems) => {
+        console.log(
+          `Found ${mediaItems.length} media items for post ${this.post.id}:`,
+          mediaItems
+        );
+        if (mediaItems && mediaItems.length > 0) {
+          this.post.media = mediaItems;
+          // Force change detection
+          this.cdr.markForCheck();
+        }
+      },
+      error: (err) => {
+        console.error(`Error loading media for post ${this.post.id}:`, err);
+      },
+    });
+
+    // If it's a shared post, also load media for the shared post
+    if (this.post.sharedPost && this.post.sharedPostId) {
+      console.log(
+        `This is a shared post. Loading media for shared post ${this.post.sharedPostId}`
+      );
+
+      this.postService.getPostMedia(this.post.sharedPostId).subscribe({
+        next: (mediaItems) => {
+          console.log(
+            `Found ${mediaItems.length} media items for shared post ${this.post.sharedPostId}:`,
+            mediaItems
+          );
+
+          if (this.post.sharedPost) {
+            this.post.sharedPost.media = mediaItems;
+
+            // Set a flag to track if there's media
+            if (mediaItems && mediaItems.length > 0) {
+              console.log('Setting hasSharedPostMedia flag to true');
+              this.hasSharedPostMedia = true;
+            }
+
+            // Force change detection
+            this.cdr.markForCheck();
+          }
+        },
+        error: (err) => {
+          console.error(
+            `Error loading media for shared post ${this.post.sharedPostId}:`,
+            err
+          );
+        },
+      });
+    }
   }
 
   ngOnDestroy(): void {
