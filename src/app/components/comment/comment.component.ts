@@ -42,6 +42,7 @@ export class CommentComponent implements OnInit, OnDestroy {
   showReplyForm = false;
   replyContent = '';
   editContent = '';
+  isLikeInProgress = false; // Flag to prevent multiple rapid clicks
 
   // Properties for expandable replies
   areRepliesExpanded = false;
@@ -282,27 +283,35 @@ export class CommentComponent implements OnInit, OnDestroy {
   }
 
   toggleLike(): void {
+    // Check authentication first
     if (!this.authService.isAuthenticated()) {
       return;
     }
 
-    const wasLiked = this.isLiked;
-
-    if (wasLiked) {
-      this.likeService.unlikeComment(this.comment.id).subscribe({
-        error: (err) => {
-          console.error('Error unliking comment:', err);
-          this.cdr.markForCheck();
-        },
-      });
-    } else {
-      this.likeService.likeComment(this.comment.id).subscribe({
-        error: (err) => {
-          console.error('Error liking comment:', err);
-          this.cdr.markForCheck();
-        },
-      });
+    // Prevent rapid clicking
+    if (this.isLikeInProgress) {
+      console.log('Like operation already in progress, ignoring click');
+      return;
     }
+
+    this.isLikeInProgress = true;
+
+    // Set a timeout to reset the flag even if operations fail
+    setTimeout(() => {
+      this.isLikeInProgress = false;
+    }, 1500);
+
+    // Use the new toggle method which handles both like and unlike
+    this.likeService.toggleCommentLike(this.comment.id).subscribe({
+      error: (err: any) => {
+        console.error('Error toggling comment like:', err);
+        this.isLikeInProgress = false;
+        this.cdr.markForCheck();
+      },
+      complete: () => {
+        this.isLikeInProgress = false;
+      },
+    });
   }
 
   toggleReplyForm(): void {
@@ -323,7 +332,6 @@ export class CommentComponent implements OnInit, OnDestroy {
     }
     this.cdr.markForCheck();
   }
-
   submitReply(): void {
     if (!this.replyContent.trim()) return;
 

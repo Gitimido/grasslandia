@@ -90,7 +90,6 @@ export class PostCardComponent implements OnInit, OnDestroy {
       this.currentUserId = user?.id || null;
       if (this.currentUserId && this.post) {
         this.checkSavedStatus();
-        this.checkLikeStatus();
       }
     });
 
@@ -98,16 +97,14 @@ export class PostCardComponent implements OnInit, OnDestroy {
     this.likeCountSubscription = this.likeService
       .getPostLikesObservable(this.post.id)
       .subscribe((count) => {
-        console.log(`Like count updated for post ${this.post.id}: ${count}`);
         this.likeCount = count;
         this.cdr.markForCheck();
       });
 
-    // Get like status as continuous observable instead of one-time check
+    // Get like status as continuous observable
     this.likeStatusSubscription = this.likeService
       .getUserPostLikeObservable(this.post.id)
       .subscribe((liked) => {
-        console.log(`Like status updated for post ${this.post.id}: ${liked}`);
         if (this.isLiked !== liked) {
           this.isLiked = liked;
           this.cdr.markForCheck();
@@ -130,31 +127,14 @@ export class PostCardComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       });
 
-    // Force periodic checks to ensure UI stays in sync
-    const syncInterval = timer(2000, 5000).subscribe(() => {
-      if (this.currentUserId) {
-        this.likeService
-          .hasUserLikedPost(this.post.id)
-          .subscribe((actualLiked) => {
-            if (this.isLiked !== actualLiked) {
-              console.log(
-                `Correcting like state mismatch for post ${this.post.id}: UI=${this.isLiked}, Actual=${actualLiked}`
-              );
-              this.isLiked = actualLiked;
-              this.cdr.markForCheck();
-            }
-          });
-      }
-    });
-
-    this.subscriptions.push(syncInterval);
+    // REMOVED: The problematic timer-based polling
+    // const syncInterval = timer(2000, 5000).subscribe(() => { ... });
+    // this.subscriptions.push(syncInterval);
 
     // Setup document click handler for modal
     this.renderer.listen('document', 'click', (event) => {
       if (this.isShareModalOpen && this.modalElement) {
-        // Check if the click was on the overlay but NOT on the modal content
         if (this.modalElement === event.target) {
-          // Click was directly on the overlay background
           this.closeShareModal();
           event.preventDefault();
           event.stopPropagation();
@@ -166,64 +146,45 @@ export class PostCardComponent implements OnInit, OnDestroy {
     this.loadMediaForPost();
   }
 
-  // Add this method to load media for the post
+  // Add this method to load media for the post with take(1)
   loadMediaForPost(): void {
-    console.log(`Loading media for post ${this.post.id}`);
-
-    // Load media for the current post
-    this.postService.getPostMedia(this.post.id).subscribe({
-      next: (mediaItems) => {
-        console.log(
-          `Found ${mediaItems.length} media items for post ${this.post.id}:`,
-          mediaItems
-        );
-        if (mediaItems && mediaItems.length > 0) {
-          this.post.media = mediaItems;
-          // Force change detection
-          this.cdr.markForCheck();
-        }
-      },
-      error: (err) => {
-        console.error(`Error loading media for post ${this.post.id}:`, err);
-      },
-    });
-
-    // If it's a shared post, also load media for the shared post
-    if (this.post.sharedPost && this.post.sharedPostId) {
-      console.log(
-        `This is a shared post. Loading media for shared post ${this.post.sharedPostId}`
-      );
-
-      this.postService.getPostMedia(this.post.sharedPostId).subscribe({
+    // Load media for the current post - ADD take(1)
+    this.postService
+      .getPostMedia(this.post.id)
+      .pipe(take(1))
+      .subscribe({
         next: (mediaItems) => {
-          console.log(
-            `Found ${mediaItems.length} media items for shared post ${this.post.sharedPostId}:`,
-            mediaItems
-          );
-
-          if (this.post.sharedPost) {
-            this.post.sharedPost.media = mediaItems;
-
-            // Set a flag to track if there's media
-            if (mediaItems && mediaItems.length > 0) {
-              console.log('Setting hasSharedPostMedia flag to true');
-              this.hasSharedPostMedia = true;
-            }
-
-            // Force change detection
+          if (mediaItems && mediaItems.length > 0) {
+            this.post.media = mediaItems;
             this.cdr.markForCheck();
           }
         },
         error: (err) => {
-          console.error(
-            `Error loading media for shared post ${this.post.sharedPostId}:`,
-            err
-          );
+          console.error(`Error loading media for post ${this.post.id}:`, err);
         },
       });
+
+    // If it's a shared post, also load media for the shared post - ADD take(1)
+    if (this.post.sharedPost && this.post.sharedPostId) {
+      this.postService
+        .getPostMedia(this.post.sharedPostId)
+        .pipe(take(1))
+        .subscribe({
+          next: (mediaItems) => {
+            if (this.post.sharedPost) {
+              this.post.sharedPost.media = mediaItems;
+              if (mediaItems && mediaItems.length > 0) {
+                this.hasSharedPostMedia = true;
+              }
+              this.cdr.markForCheck();
+            }
+          },
+          error: (err) => {
+            console.error(`Error loading media for shared post:`, err);
+          },
+        });
     }
   }
-
   ngOnDestroy(): void {
     // Clean up subscriptions to prevent memory leaks
     if (this.userSubscription) {
@@ -306,52 +267,21 @@ export class PostCardComponent implements OnInit, OnDestroy {
           this.isLikeInProgress = false;
         }, 1500);
 
-        // Update UI immediately for better feedback
-        const wasLiked = this.isLiked;
-        this.isLiked = !wasLiked;
-        this.likeCount = wasLiked
-          ? Math.max(0, this.likeCount - 1)
-          : this.likeCount + 1;
-        this.cdr.markForCheck();
-
-        if (wasLiked) {
-          console.log('Unliking post, previously liked state:', wasLiked);
-          this.likeService.unlikePost(this.post.id).subscribe({
-            next: () => {
-              console.log('Unlike successful');
-              this.isLikeInProgress = false;
-              this.cdr.markForCheck();
-            },
-            error: (err) => {
-              console.error('Error unliking post:', err);
-              // Revert the UI on error
-              this.isLiked = true;
-              this.likeCount = this.likeCount + 1;
-              this.isLikeInProgress = false;
-              this.cdr.markForCheck();
-            },
-          });
-        } else {
-          console.log('Liking post, previously liked state:', wasLiked);
-          this.likeService.likePost(this.post.id).subscribe({
-            next: () => {
-              console.log('Like successful');
-              this.isLikeInProgress = false;
-              this.cdr.markForCheck();
-            },
-            error: (err) => {
-              console.error('Error liking post:', err);
-              // Revert the UI on error
-              this.isLiked = false;
-              this.likeCount = Math.max(0, this.likeCount - 1);
-              this.isLikeInProgress = false;
-              this.cdr.markForCheck();
-            },
-          });
-        }
+        // Use the new toggle method which handles both like and unlike
+        this.likeService.togglePostLike(this.post.id).subscribe({
+          next: () => {
+            console.log('Toggle like successful');
+            this.isLikeInProgress = false;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            console.error('Error toggling post like:', err);
+            this.isLikeInProgress = false;
+            this.cdr.markForCheck();
+          },
+        });
       });
   }
-
   toggleComments(): void {
     console.log('Toggle comments clicked, current state:', this.showComments);
     this.showComments = !this.showComments;

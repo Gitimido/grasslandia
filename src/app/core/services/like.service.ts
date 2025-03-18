@@ -11,18 +11,17 @@ import {
   of,
   throwError,
   BehaviorSubject,
+  skip,
   timer,
-  Subject,
 } from 'rxjs';
 import {
   map,
   catchError,
-  tap,
-  retry,
+  take,
   debounceTime,
   switchMap,
   finalize,
-  take,
+  tap,
 } from 'rxjs/operators';
 import { environment } from '../../../environment';
 import { AuthService } from './auth.service';
@@ -50,6 +49,9 @@ export class LikeService implements OnDestroy {
   // Set to track ongoing like/unlike operations to prevent duplicates
   private pendingPostOperations = new Set<string>();
 
+  // Track initialization state
+  private initialized = false;
+
   constructor(private authService: AuthService) {
     console.log('LikeService initialized');
     this.supabase = createClient(
@@ -57,19 +59,22 @@ export class LikeService implements OnDestroy {
       environment.supabaseKey
     );
 
-    // Initial realtime subscriptions
-    this.setupRealtimeSubscriptions();
-
     // Subscribe to auth changes to restart subscriptions if user changes
-    this.authService.user$.subscribe((user) => {
-      // Always clean up and reset subscriptions when user changes
+    this.authService.user$.pipe(take(1)).subscribe((user) => {
+      if (user && !this.initialized) {
+        this.initialized = true;
+        this.setupRealtimeSubscriptions();
+      }
+    });
+
+    // Handle auth changes more efficiently
+    this.authService.user$.pipe(skip(1)).subscribe((user) => {
+      // Always clean up subscriptions when user changes
       this.cleanupSubscriptions();
 
       if (user) {
-        // Delay setup slightly to ensure clean state
-        setTimeout(() => {
-          this.setupRealtimeSubscriptions();
-        }, 500);
+        // Setup new subscriptions for the new user
+        this.setupRealtimeSubscriptions();
       }
     });
   }
@@ -140,8 +145,9 @@ export class LikeService implements OnDestroy {
       this.postLikesChannel = null;
     }
 
-    // Clear any pending operations
+    // Clear any pending operations and state
     this.pendingPostOperations.clear();
+    this.initialized = false;
   }
 
   // Handle like insert events from realtime subscription
@@ -161,7 +167,7 @@ export class LikeService implements OnDestroy {
         });
       }
     } else if (like.comment_id) {
-      // Comment like logic unchanged
+      // Comment like logic
       this.refreshCommentLikeCount(like.comment_id);
 
       if (like.user_id === this.authService.user?.id) {
@@ -191,7 +197,7 @@ export class LikeService implements OnDestroy {
         });
       }
     } else if (like.comment_id) {
-      // Comment like logic unchanged
+      // Comment like logic
       this.refreshCommentLikeCount(like.comment_id);
 
       if (like.user_id === this.authService.user?.id) {
@@ -215,7 +221,7 @@ export class LikeService implements OnDestroy {
         .eq('post_id', postId)
     )
       .pipe(
-        retry(3000), // Retry up to 3 times if network issues
+        take(1), // Take only one result and complete
         map(({ count, error }) => {
           if (error) throw error;
           return count || 0;
@@ -255,7 +261,7 @@ export class LikeService implements OnDestroy {
     }
   }
 
-  // Fetch current comment like count from database
+  // Fetch current comment like count from database - optimized with take(1)
   private refreshCommentLikeCount(commentId: string): void {
     from(
       this.supabase
@@ -264,7 +270,7 @@ export class LikeService implements OnDestroy {
         .eq('comment_id', commentId)
     )
       .pipe(
-        retry(3000),
+        take(1), // Take only one result and complete
         map(({ count, error }) => {
           if (error) throw error;
           return count || 0;
@@ -289,10 +295,13 @@ export class LikeService implements OnDestroy {
       });
   }
 
-  // Get post likes as an observable
+  // FIXED: Get post likes as an observable - optimized version
   getPostLikesObservable(postId: string): Observable<number> {
-    // First, fetch the initial count from the server
-    this.refreshPostLikeCount(postId);
+    // Check if we already have this post like count
+    if (!(postId in this.postLikes.value)) {
+      // If not, fetch once from the server
+      this.refreshPostLikeCount(postId);
+    }
 
     // Return the observable that will update in real-time
     return this.postLikes.asObservable().pipe(
@@ -302,10 +311,13 @@ export class LikeService implements OnDestroy {
     );
   }
 
-  // Get comment likes as an observable
+  // FIXED: Get comment likes as an observable - optimized version
   getCommentLikesObservable(commentId: string): Observable<number> {
-    // Comment likes implementation unchanged
-    this.refreshCommentLikeCount(commentId);
+    // Check if we already have this comment like count
+    if (!(commentId in this.commentLikes.value)) {
+      // If not, fetch once from the server
+      this.refreshCommentLikeCount(commentId);
+    }
 
     return this.commentLikes.asObservable().pipe(
       map((likes) => likes[commentId] || 0),
@@ -313,16 +325,21 @@ export class LikeService implements OnDestroy {
     );
   }
 
-  // Get user post like status as an observable
+  // FIXED: Get user post like status as an observable
   getUserPostLikeObservable(postId: string): Observable<boolean> {
-    // Check if the user has liked this post
-    this.hasUserLikedPost(postId).subscribe((liked) => {
-      const userLikes = this.userPostLikes.value;
-      this.userPostLikes.next({
-        ...userLikes,
-        [postId]: liked,
-      });
-    });
+    // Only fetch from the server if we don't have this post like status
+    if (!(postId in this.userPostLikes.value)) {
+      // Fetch once and update the behavior subject
+      this.hasUserLikedPost(postId)
+        .pipe(take(1))
+        .subscribe((liked) => {
+          const userLikes = this.userPostLikes.value;
+          this.userPostLikes.next({
+            ...userLikes,
+            [postId]: liked,
+          });
+        });
+    }
 
     // Return the observable
     return this.userPostLikes
@@ -330,31 +347,36 @@ export class LikeService implements OnDestroy {
       .pipe(map((likes) => likes[postId] || false));
   }
 
-  // Get user comment like status as an observable
+  // FIXED: Get user comment like status as an observable
   getUserCommentLikeObservable(commentId: string): Observable<boolean> {
-    // Comment like status implementation unchanged
-    this.hasUserLikedComment(commentId).subscribe((liked) => {
-      const userLikes = this.userCommentLikes.value;
-      this.userCommentLikes.next({
-        ...userLikes,
-        [commentId]: liked,
-      });
-    });
+    // Only fetch from the server if we don't have this comment like status
+    if (!(commentId in this.userCommentLikes.value)) {
+      // Fetch once and update the behavior subject
+      this.hasUserLikedComment(commentId)
+        .pipe(take(1))
+        .subscribe((liked) => {
+          const userLikes = this.userCommentLikes.value;
+          this.userCommentLikes.next({
+            ...userLikes,
+            [commentId]: liked,
+          });
+        });
+    }
 
     return this.userCommentLikes
       .asObservable()
       .pipe(map((likes) => likes[commentId] || false));
   }
 
-  // Like a post - COMPLETELY REWRITTEN
-  likePost(postId: string): Observable<void> {
+  // Replace both likePost and unlikePost with this single method
+  togglePostLike(postId: string): Observable<void> {
     const userId = this.authService.user?.id;
     if (!userId) {
       return throwError(() => new Error('User not authenticated'));
     }
 
     // Generate a unique operation key
-    const operationKey = `like:${postId}`;
+    const operationKey = `toggle:${postId}`;
 
     // If there's already a pending operation for this post, return an error
     if (this.pendingPostOperations.has(operationKey)) {
@@ -364,92 +386,76 @@ export class LikeService implements OnDestroy {
       return throwError(() => new Error('Operation already in progress'));
     }
 
-    // First check if the user has already liked this post
-    return this.hasUserLikedPost(postId).pipe(
-      switchMap((isLiked) => {
-        // If already liked, return early
-        if (isLiked) {
-          console.log(`Post ${postId} is already liked, ignoring request`);
-          return of(undefined);
-        }
+    // Mark operation as pending
+    this.pendingPostOperations.add(operationKey);
 
-        console.log(`Liking post: ${postId}, userId: ${userId}`);
+    // Get current like status
+    const isCurrentlyLiked = this.userPostLikes.value[postId] || false;
 
-        // Mark operation as pending
-        this.pendingPostOperations.add(operationKey);
+    // Update local state optimistically (toggle the current state)
+    const userLikes = this.userPostLikes.value;
+    this.userPostLikes.next({
+      ...userLikes,
+      [postId]: !isCurrentlyLiked,
+    });
 
-        // Update local state optimistically
-        const userLikes = this.userPostLikes.value;
+    // Get current count to adjust optimistically
+    const currentCount = this.postLikes.value[postId] || 0;
+    this.postLikes.next({
+      ...this.postLikes.value,
+      [postId]: isCurrentlyLiked
+        ? Math.max(0, currentCount - 1)
+        : currentCount + 1,
+    });
+
+    // Now perform the actual insert - this will toggle in the database due to our trigger
+    return from(
+      this.supabase.from('likes').insert({
+        user_id: userId,
+        post_id: postId,
+        comment_id: null,
+      })
+    ).pipe(
+      map(({ error }) => {
+        if (error) throw error;
+        // Force refresh the count once
+        this.refreshPostLikeCount(postId);
+        return undefined;
+      }),
+      catchError((error) => {
+        console.error('Error toggling post like:', error);
+
+        // Revert optimistic updates on error
         this.userPostLikes.next({
-          ...userLikes,
-          [postId]: true,
+          ...this.userPostLikes.value,
+          [postId]: isCurrentlyLiked,
         });
 
-        // Get current count to increment optimistically
-        const currentCount = this.postLikes.value[postId] || 0;
         this.postLikes.next({
           ...this.postLikes.value,
-          [postId]: currentCount + 1,
+          [postId]: currentCount,
         });
 
-        // Now perform the actual insert
-        return from(
-          this.supabase.from('likes').insert({
-            user_id: userId,
-            post_id: postId,
-            comment_id: null,
-          })
-        ).pipe(
-          tap((response) => {
-            console.log('Like post response:', response);
-          }),
-          map(({ error }) => {
-            if (error) throw error;
-            // Force refresh the count after a slight delay
-            setTimeout(() => this.refreshPostLikeCount(postId), 300);
-            return undefined;
-          }),
-          catchError((error) => {
-            console.error('Error liking post:', error);
-
-            // Revert optimistic updates on error
-            this.userPostLikes.next({
-              ...this.userPostLikes.value,
-              [postId]: false,
-            });
-
-            this.postLikes.next({
-              ...this.postLikes.value,
-              [postId]: Math.max(0, currentCount),
-            });
-
-            return throwError(() => error);
-          }),
-          finalize(() => {
-            // Operation finished, remove from pending set
-            this.pendingPostOperations.delete(operationKey);
-          })
-        );
-      }),
-      // Catch errors from hasUserLikedPost
-      catchError((error) => {
-        console.error('Error checking like status:', error);
         return throwError(() => error);
+      }),
+      finalize(() => {
+        // Operation finished, remove from pending set
+        this.pendingPostOperations.delete(operationKey);
       })
     );
   }
 
-  // Unlike a post - COMPLETELY REWRITTEN
-  unlikePost(postId: string): Observable<void> {
+  // New toggleCommentLike method to replace likeComment and unlikeComment
+  toggleCommentLike(commentId: string): Observable<void> {
     const userId = this.authService.user?.id;
     if (!userId) {
       return throwError(() => new Error('User not authenticated'));
     }
 
     // Generate a unique operation key
-    const operationKey = `unlike:${postId}`;
+    const operationKey = `toggle:comment:${commentId}`;
 
-    // If there's already a pending operation for this post, return an error
+    // If there's already a pending operation for this comment, return an error
     if (this.pendingPostOperations.has(operationKey)) {
       console.log(
         `Operation ${operationKey} already in progress, ignoring duplicate request`
@@ -457,87 +463,66 @@ export class LikeService implements OnDestroy {
       return throwError(() => new Error('Operation already in progress'));
     }
 
-    // First check if the user has actually liked this post
-    return this.hasUserLikedPost(postId).pipe(
-      switchMap((isLiked) => {
-        // If not liked, return early
-        if (!isLiked) {
-          console.log(`Post ${postId} is not liked, ignoring unlike request`);
-          return of(undefined);
-        }
+    // Mark operation as pending
+    this.pendingPostOperations.add(operationKey);
 
-        console.log(`Unliking post: ${postId}, userId: ${userId}`);
+    // Get current like status
+    const isCurrentlyLiked = this.userCommentLikes.value[commentId] || false;
 
-        // Mark operation as pending
-        this.pendingPostOperations.add(operationKey);
+    // Update local state optimistically (toggle the current state)
+    const userLikes = this.userCommentLikes.value;
+    this.userCommentLikes.next({
+      ...userLikes,
+      [commentId]: !isCurrentlyLiked,
+    });
 
-        // Update local state optimistically
-        const userLikes = this.userPostLikes.value;
-        this.userPostLikes.next({
-          ...userLikes,
-          [postId]: false,
-        });
+    // Get current count to adjust optimistically
+    const currentCount = this.commentLikes.value[commentId] || 0;
+    this.commentLikes.next({
+      ...this.commentLikes.value,
+      [commentId]: isCurrentlyLiked
+        ? Math.max(0, currentCount - 1)
+        : currentCount + 1,
+    });
 
-        // Get current count to decrement optimistically
-        const currentCount = this.postLikes.value[postId] || 0;
-        this.postLikes.next({
-          ...this.postLikes.value,
-          [postId]: Math.max(0, currentCount - 1),
-        });
-
-        // Now perform the actual delete
-        return from(
-          this.supabase.from('likes').delete().match({
-            user_id: userId,
-            post_id: postId,
-          })
-        ).pipe(
-          tap((response) => {
-            console.log('Unlike post response:', response);
-          }),
-          map(({ error, data }) => {
-            if (error) {
-              console.error('Supabase error unliking post:', error);
-              throw error;
-            }
-
-            console.log(`Unlike result:`, data);
-
-            // Force refresh the count after a slight delay
-            setTimeout(() => this.refreshPostLikeCount(postId), 300);
-            return undefined;
-          }),
-          catchError((error) => {
-            console.error('Error unliking post:', error);
-
-            // Revert optimistic updates on error
-            this.userPostLikes.next({
-              ...this.userPostLikes.value,
-              [postId]: true,
-            });
-
-            this.postLikes.next({
-              ...this.postLikes.value,
-              [postId]: currentCount,
-            });
-
-            return throwError(() => error);
-          }),
-          finalize(() => {
-            // Operation finished, remove from pending set
-            this.pendingPostOperations.delete(operationKey);
-          })
-        );
+    // Now perform the actual insert - this will toggle in the database due to our trigger
+    return from(
+      this.supabase.from('likes').insert({
+        user_id: userId,
+        post_id: null,
+        comment_id: commentId,
+      })
+    ).pipe(
+      map(({ error }) => {
+        if (error) throw error;
+        // Force refresh the count once
+        this.refreshCommentLikeCount(commentId);
+        return undefined;
       }),
-      // Catch errors from hasUserLikedPost
       catchError((error) => {
-        console.error('Error checking like status:', error);
+        console.error('Error toggling comment like:', error);
+
+        // Revert optimistic updates on error
+        this.userCommentLikes.next({
+          ...this.userCommentLikes.value,
+          [commentId]: isCurrentlyLiked,
+        });
+
+        this.commentLikes.next({
+          ...this.commentLikes.value,
+          [commentId]: currentCount,
+        });
+
         return throwError(() => error);
+      }),
+      finalize(() => {
+        // Operation finished, remove from pending set
+        this.pendingPostOperations.delete(operationKey);
       })
     );
   }
 
-  // Check if user has liked a post
+  // Check if user has liked a post - OPTIMIZED
   hasUserLikedPost(postId: string): Observable<boolean> {
     const userId = this.authService.user?.id;
     if (!userId) {
@@ -547,7 +532,7 @@ export class LikeService implements OnDestroy {
     return from(
       this.supabase
         .from('likes')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('post_id', postId)
     ).pipe(
@@ -564,115 +549,7 @@ export class LikeService implements OnDestroy {
     );
   }
 
-  // Get like count for a post
-  getPostLikeCount(postId: string): Observable<number> {
-    return from(
-      this.supabase
-        .from('likes')
-        .select('id', { count: 'exact', head: true })
-        .eq('post_id', postId)
-    ).pipe(
-      map(({ count, error }) => {
-        if (error) throw error;
-        return count || 0;
-      }),
-      catchError((error) => {
-        console.error('Error getting post like count:', error);
-        return of(0);
-      })
-    );
-  }
-
-  // Comment like/unlike methods remain unchanged
-  likeComment(commentId: string): Observable<void> {
-    const userId = this.authService.user?.id;
-    if (!userId) {
-      return throwError(() => new Error('User not authenticated'));
-    }
-
-    // Update local state optimistically
-    const userLikes = this.userCommentLikes.value;
-    this.userCommentLikes.next({
-      ...userLikes,
-      [commentId]: true,
-    });
-
-    return from(
-      this.supabase.from('likes').insert({
-        user_id: userId,
-        post_id: null,
-        comment_id: commentId,
-      })
-    ).pipe(
-      map(({ error }) => {
-        if (error) throw error;
-        // The actual count will be updated via the realtime subscription
-        return undefined;
-      }),
-      catchError((error) => {
-        console.error('Error liking comment:', error);
-
-        // Revert optimistic update on error
-        const userLikes = this.userCommentLikes.value;
-        this.userCommentLikes.next({
-          ...userLikes,
-          [commentId]: false,
-        });
-
-        return throwError(() => error);
-      })
-    );
-  }
-
-  unlikeComment(commentId: string): Observable<void> {
-    const userId = this.authService.user?.id;
-    if (!userId) {
-      return throwError(() => new Error('User not authenticated'));
-    }
-
-    // Update local state optimistically
-    const userLikes = this.userCommentLikes.value;
-    this.userCommentLikes.next({
-      ...userLikes,
-      [commentId]: false,
-    });
-
-    return from(
-      this.supabase
-        .from('likes')
-        .delete()
-        .eq('user_id', userId)
-        .eq('comment_id', commentId)
-    ).pipe(
-      map(({ error }) => {
-        if (error) throw error;
-
-        // Force a refresh after a slight delay
-        setTimeout(() => {
-          this.refreshCommentLikeCount(commentId);
-        }, 300);
-
-        return undefined;
-      }),
-      tap(() => {
-        // Manually force another check after a delay
-        timer(1000).subscribe(() => this.refreshCommentLikeCount(commentId));
-      }),
-      catchError((error) => {
-        console.error('Error unliking comment:', error);
-
-        // Revert optimistic update on error
-        const userLikes = this.userCommentLikes.value;
-        this.userCommentLikes.next({
-          ...userLikes,
-          [commentId]: true,
-        });
-
-        return throwError(() => error);
-      })
-    );
-  }
-
+  // Check if user has liked a comment - OPTIMIZED
   hasUserLikedComment(commentId: string): Observable<boolean> {
     const userId = this.authService.user?.id;
     if (!userId) {
@@ -682,13 +559,17 @@ export class LikeService implements OnDestroy {
     return from(
       this.supabase
         .from('likes')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('comment_id', commentId)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        return data && data.length > 0;
+        const hasLiked = data && data.length > 0;
+        console.log(
+          `User ${userId} has liked comment ${commentId}: ${hasLiked}`
+        );
+        return hasLiked;
       }),
       catchError((error) => {
         console.error('Error checking if comment is liked:', error);
@@ -697,21 +578,20 @@ export class LikeService implements OnDestroy {
     );
   }
 
-  getCommentLikeCount(commentId: string): Observable<number> {
-    return from(
-      this.supabase
-        .from('likes')
-        .select('id', { count: 'exact', head: true })
-        .eq('comment_id', commentId)
-    ).pipe(
-      map(({ count, error }) => {
-        if (error) throw error;
-        return count || 0;
-      }),
-      catchError((error) => {
-        console.error('Error getting comment like count:', error);
-        return of(0);
-      })
-    );
+  // Keep these methods for backward compatibility
+  likePost(postId: string): Observable<void> {
+    return this.togglePostLike(postId);
+  }
+
+  unlikePost(postId: string): Observable<void> {
+    return this.togglePostLike(postId);
+  }
+
+  likeComment(commentId: string): Observable<void> {
+    return this.toggleCommentLike(commentId);
+  }
+
+  unlikeComment(commentId: string): Observable<void> {
+    return this.toggleCommentLike(commentId);
   }
 }

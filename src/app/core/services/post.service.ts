@@ -737,4 +737,65 @@ export class PostService {
       catchError((error) => throwError(() => error))
     );
   }
+
+  getMediaForMultiplePosts(
+    postIds: string[]
+  ): Observable<{ [postId: string]: Media[] }> {
+    if (!postIds || postIds.length === 0) {
+      return of({});
+    }
+
+    // Deduplicate post IDs
+    const uniquePostIds = [...new Set(postIds)];
+
+    // Make a single query to Supabase with 'in' filter
+    return from(
+      this.supabase
+        .from('media')
+        .select('*')
+        .in('post_id', uniquePostIds)
+        .order('order_index', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+
+        // Group media items by post_id
+        const mediaMap: { [postId: string]: Media[] } = {};
+
+        // Initialize with empty arrays for all requested posts
+        uniquePostIds.forEach((id) => {
+          mediaMap[id] = [];
+        });
+
+        // Group media items by post_id
+        if (data && data.length > 0) {
+          data.forEach((item) => {
+            if (item.post_id) {
+              if (!mediaMap[item.post_id]) {
+                mediaMap[item.post_id] = [];
+              }
+
+              mediaMap[item.post_id].push(
+                new Media({
+                  id: item.id,
+                  postId: item.post_id,
+                  messageId: item.message_id,
+                  url: item.url,
+                  mediaType: item.media_type,
+                  orderIndex: item.order_index,
+                  createdAt: new Date(item.created_at),
+                })
+              );
+            }
+          });
+        }
+
+        return mediaMap;
+      }),
+      catchError((error) => {
+        console.error('Error fetching media for multiple posts:', error);
+        return of({});
+      })
+    );
+  }
 }
