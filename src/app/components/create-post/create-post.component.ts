@@ -27,6 +27,7 @@ import { MediaService } from '../../core/services/media.service';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { environment } from '../../../environment';
 import { Media } from '../../models';
+import { UserService } from '../../core/services/user.service';
 // Define available post types
 export enum PostType {
   TEXT = 'text',
@@ -68,23 +69,44 @@ export class CreatePostComponent implements OnInit, OnDestroy {
     private postService: PostService,
     private authService: AuthService,
     private modalService: ModalService,
-    private mediaService: MediaService
+    private mediaService: MediaService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
-    // Get user info for avatar and name
+    // Get user info from database instead of auth metadata
     if (this.authService.user) {
-      // Try to get avatar from user metadata
-      this.userAvatar =
-        this.authService.user.user_metadata?.['avatar_url'] || '';
-
-      // Try to get user's name
-      this.userName =
-        this.authService.user.user_metadata?.['full_name'] ||
-        this.authService.user.user_metadata?.['username'] ||
-        (this.authService.user.email
-          ? this.authService.user.email.split('@')[0]
-          : 'User');
+      // Get avatar from user database instead of metadata
+      this.userService.getCurrentUserProfile().subscribe({
+        next: (user) => {
+          if (user) {
+            this.userAvatar = user.avatarUrl || '';
+            this.userName = user.displayName || 'User';
+          } else {
+            // Fallback to auth metadata if user profile not found
+            this.userAvatar =
+              this.authService.user?.user_metadata?.['avatar_url'] || '';
+            this.userName =
+              this.authService.user?.user_metadata?.['full_name'] ||
+              this.authService.user?.user_metadata?.['username'] ||
+              (this.authService.user?.email
+                ? this.authService.user.email.split('@')[0]
+                : 'User');
+          }
+        },
+        error: (err) => {
+          console.error('Error loading user profile:', err);
+          // Fallback to auth metadata on error
+          this.userAvatar =
+            this.authService.user?.user_metadata?.['avatar_url'] || '';
+          this.userName =
+            this.authService.user?.user_metadata?.['full_name'] ||
+            this.authService.user?.user_metadata?.['username'] ||
+            (this.authService.user?.email
+              ? this.authService.user.email.split('@')[0]
+              : 'User');
+        },
+      });
     }
 
     // Subscribe to modal state changes

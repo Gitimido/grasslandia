@@ -452,8 +452,31 @@ export class PostService {
   }
 
   // Helper method to map Supabase post data to our Post model
+  // src/app/core/services/post.service.ts
+
+  // Find the mapPostFromSupabase method and replace it with this implementation:
   private mapPostFromSupabase(data: any): Post {
-    // Create the post object
+    // Create a properly mapped user object if it exists
+    let user = undefined;
+    if (data.users) {
+      user = {
+        id: data.users.id,
+        username: data.users.username,
+        email: data.users.email,
+        fullName: data.users.full_name,
+        avatarUrl: data.users.avatar_url,
+        bio: data.users.bio,
+        theme: data.users.theme || 'light',
+        privacySettings: data.users.privacy_settings || {
+          postsVisibility: 'public',
+          profileVisibility: 'public',
+        },
+        createdAt: new Date(data.users.created_at),
+        updatedAt: new Date(data.users.updated_at),
+      };
+    }
+
+    // Create the post object with the mapped user
     const post = new Post({
       id: data.id,
       userId: data.user_id,
@@ -462,12 +485,31 @@ export class PostService {
       groupId: data.group_id,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
-      user: data.users,
+      user: user,
       sharedPostId: data.shared_post_id,
     });
 
-    // Add shared post if it exists
+    // Add shared post if it exists, also with a properly mapped user
     if (data.shared_post) {
+      let sharedUser = undefined;
+      if (data.shared_post.users) {
+        sharedUser = {
+          id: data.shared_post.users.id,
+          username: data.shared_post.users.username,
+          email: data.shared_post.users.email,
+          fullName: data.shared_post.users.full_name,
+          avatarUrl: data.shared_post.users.avatar_url,
+          bio: data.shared_post.users.bio,
+          theme: data.shared_post.users.theme || 'light',
+          privacySettings: data.shared_post.users.privacy_settings || {
+            postsVisibility: 'public',
+            profileVisibility: 'public',
+          },
+          createdAt: new Date(data.shared_post.users.created_at),
+          updatedAt: new Date(data.shared_post.users.updated_at),
+        };
+      }
+
       post.sharedPost = new Post({
         id: data.shared_post.id,
         userId: data.shared_post.user_id,
@@ -476,7 +518,7 @@ export class PostService {
         groupId: data.shared_post.group_id,
         createdAt: new Date(data.shared_post.created_at),
         updatedAt: new Date(data.shared_post.updated_at),
-        user: data.shared_post.users,
+        user: sharedUser,
       });
     }
 

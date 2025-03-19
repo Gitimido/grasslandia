@@ -121,12 +121,12 @@
                         <li *ngFor="let notification of notifications" class="notification-item"
                             [class.unread]="!notification.read" (click)="markNotificationAsRead(notification.id)">
                             <div class="notification-avatar">
-                                <img [src]="notification.actor?.avatar_url || '/assets/default-avatar.png'"
-                                    [alt]="notification.actor?.username || 'User'" class="user-avatar">
+                                <img [src]="getActorAvatar(notification)" [alt]="getActorUsername(notification)"
+                                    class="user-avatar">
                             </div>
                             <div class="notification-content">
                                 <div class="notification-message">
-                                    <span class="actor-name">{{ notification.actor?.username || 'Someone' }}</span>
+                                    <span class="actor-name">{{ getActorUsername(notification) }}</span>
                                     <span>{{ notification.content }}</span>
                                 </div>
                                 <div class="notification-time">{{ formatTimeAgo(notification.createdAt) }}</div>

@@ -202,4 +202,42 @@ export class UserService {
       })
     );
   }
+
+  getUserById(userId: string): Observable<User | null> {
+    return from(
+      this.supabase.from('users').select('*').eq('id', userId).single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No rows returned - user not found
+            return null;
+          }
+          throw error;
+        }
+
+        if (!data) return null;
+
+        return new User({
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          fullName: data.full_name,
+          avatarUrl: data.avatar_url,
+          bio: data.bio,
+          theme: data.theme || 'light',
+          privacySettings: data.privacy_settings || {
+            postsVisibility: 'public',
+            profileVisibility: 'public',
+          },
+          createdAt: new Date(data.created_at),
+          updatedAt: new Date(data.updated_at),
+        } as IUser);
+      }),
+      catchError((error) => {
+        console.error('Error fetching user by ID:', error);
+        return of(null);
+      })
+    );
+  }
 }

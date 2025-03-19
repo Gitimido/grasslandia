@@ -120,7 +120,12 @@
     <div class="user-container" *ngIf="currentUser">
         <div class="user-info" [class.user-info-collapsed]="isCollapsed" (click)="toggleUserMenu()">
             <div class="user-avatar">
-                {{ getUserInitial() }}
+                <ng-container *ngIf="hasAvatar(); else initialTemplate">
+                    <img [src]="getUserAvatar()" alt="User avatar">
+                </ng-container>
+                <ng-template #initialTemplate>
+                    {{ getUserInitial() }}
+                </ng-template>
             </div>
             <div class="user-details" *ngIf="!isCollapsed">
                 <div class="user-name">{{ getUserDisplayName() }}</div>

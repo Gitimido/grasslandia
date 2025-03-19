@@ -9,8 +9,9 @@ import {
 } from '../../core/services/friendship.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Subscription } from 'rxjs';
+import { forkJoin, map, Subscription } from 'rxjs';
 import { Notification } from '../../models';
+import { UserService } from '../../core/services/user.service';
 
 interface FriendItem {
   id: string;
@@ -56,7 +57,8 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
   constructor(
     private friendshipService: FriendshipService,
     private notificationService: NotificationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -78,18 +80,64 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
         })
       );
 
-      // Subscribe to current friends
+      // Subscribe to current friends - UPDATED VERSION
       this.subscriptions.push(
         this.friendshipService.friends$.subscribe((friendIds) => {
-          // For now just create placeholder objects with IDs
-          // In a real implementation, you'd fetch user details for each friend ID
-          this.currentFriends = friendIds.map((id) => ({
-            id,
-            username: 'friend_' + id.substring(0, 5),
-            fullName: 'Friend User',
-            status: FriendshipStatus.ACCEPTED,
-          }));
-          this.isFriendsLoading = false;
+          this.isFriendsLoading = true;
+
+          // If there are no friends, set empty array and finish
+          if (!friendIds || friendIds.length === 0) {
+            this.currentFriends = [];
+            this.isFriendsLoading = false;
+            return;
+          }
+
+          // Create an array of observables for each friend
+          const friendObservables = friendIds.map((id) =>
+            this.userService.getUserById(id).pipe(
+              map((user) => {
+                if (!user) {
+                  // If user not found, return placeholder
+                  return {
+                    id,
+                    username: 'Unknown User',
+                    fullName: 'Unknown',
+                    avatarUrl: undefined,
+                    status: FriendshipStatus.ACCEPTED,
+                  };
+                }
+
+                // Map user to FriendItem format
+                return {
+                  id: user.id,
+                  username: user.username,
+                  fullName: user.fullName,
+                  avatarUrl: user.avatarUrl,
+                  status: FriendshipStatus.ACCEPTED,
+                };
+              })
+            )
+          );
+
+          // Wait for all friend lookups to complete
+          forkJoin(friendObservables).subscribe({
+            next: (friends) => {
+              this.currentFriends = friends;
+              this.isFriendsLoading = false;
+            },
+            error: (err) => {
+              console.error('Error loading friends:', err);
+              this.isFriendsLoading = false;
+
+              // On error, still attempt to display some data with placeholders
+              this.currentFriends = friendIds.map((id) => ({
+                id,
+                username: 'friend_' + id.substring(0, 5),
+                fullName: 'Friend User',
+                status: FriendshipStatus.ACCEPTED,
+              }));
+            },
+          });
         })
       );
 
@@ -252,5 +300,31 @@ export class TopNavBarComponent implements OnInit, OnDestroy {
     if (interval > 1) return Math.floor(interval) + 'm';
 
     return Math.floor(seconds) + 's';
+  }
+
+  getActorAvatar(notification: Notification): string {
+    // Check for proper actor object structure
+    if (notification.actor) {
+      // Try user model format first (camelCase)
+      if (notification.actor.avatarUrl) {
+        return notification.actor.avatarUrl;
+      }
+      // Try database format (snake_case)
+      if (notification.actor.avatar_url) {
+        return notification.actor.avatar_url;
+      }
+    }
+    // Default avatar
+    return '/assets/default-avatar.png';
+  }
+
+  // And a similar method for username:
+  getActorUsername(notification: Notification): string {
+    if (notification.actor) {
+      return (
+        notification.actor.username || notification.actor.userName || 'User'
+      );
+    }
+    return 'User';
   }
 }
