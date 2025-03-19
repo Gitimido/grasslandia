@@ -67,4 +67,13 @@ export class MediaDisplayComponent implements OnChanges {
       this.currentIndex = index;
     }
   }
+
+  ngAfterViewInit() {
+    // Log media type information to help debug
+    if (this.hasMedia && this.currentMedia) {
+      console.log('Media type:', this.currentMedia.mediaType);
+      console.log('Is video:', this.currentMedia.isVideo);
+      console.log('Media URL:', this.currentMedia.url);
+    }
+  }
 }

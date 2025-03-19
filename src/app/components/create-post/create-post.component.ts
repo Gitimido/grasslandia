@@ -650,10 +650,10 @@ export class CreatePostComponent implements OnInit, OnDestroy {
                     post_id: createdPost.id,
                     user_id: userId,
                     url: result.url,
-                    media_type:
-                      result.mediaType || file.type.startsWith('image/')
-                        ? 'image'
-                        : 'video',
+                    media_type: file.type.startsWith('image/')
+                      ? 'image'
+                      : 'video',
+
                     order_index: index,
                     created_at: new Date().toISOString(),
                   })

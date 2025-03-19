@@ -12,10 +12,15 @@
             <img *ngIf="currentMedia.isImage" [src]="currentMedia.url" alt="Post image" class="media-image">
 
             <!-- Video display -->
-            <video *ngIf="currentMedia.isVideo" controls class="media-video">
+            <video *ngIf="currentMedia.isVideo" controls preload="metadata" class="media-video">
                 <source [src]="currentMedia.url" type="video/mp4">
-                Your browser does not support video playback.
+                <source [src]="currentMedia.url" type="video/webm">
+                <source [src]="currentMedia.url" type="video/ogg">
+                <source [src]="currentMedia.url" type="video/mp3">
+
+                <p>Your browser does not support video playback.</p>
             </video>
+
         </ng-container>
 
         <!-- Navigation arrows for multiple media -->
