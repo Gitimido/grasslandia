@@ -1,0 +1,52 @@
+<!-- src/app/components/settings-modal/profile-settings/profile-settings.component.html -->
+<div class="profile-settings">
+    <h3>Profile Settings</h3>
+
+    <div class="profile-picture-section">
+        <h4>Profile Picture</h4>
+        <div class="profile-picture-container">
+            <div class="current-picture">
+                <img [src]="user?.avatarUrl || '/assets/default-avatar.png'" alt="Profile picture">
+            </div>
+            <app-profile-picture-uploader
+                (pictureChanged)="onProfilePictureChanged($event)"></app-profile-picture-uploader>
+        </div>
+    </div>
+
+    <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="profile-form">
+        <div class="form-group">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" formControlName="fullName" placeholder="Your full name">
+            <div *ngIf="profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched"
+                class="error-message">
+                Full name is required
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" formControlName="username" placeholder="Your username">
+            <div *ngIf="profileForm.get('username')?.invalid && profileForm.get('username')?.touched"
+                class="error-message">
+                <span *ngIf="profileForm.get('username')?.errors?.['required']">Username is required</span>
+                <span *ngIf="profileForm.get('username')?.errors?.['minlength']">Username must be at least 3
+                    characters</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="bio">Bio</label>
+            <textarea id="bio" formControlName="bio" placeholder="Tell us about yourself" rows="3"></textarea>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-alert">{{ errorMessage }}</div>
+        <div *ngIf="successMessage" class="success-alert">{{ successMessage }}</div>
+
+        <div class="form-actions">
+            <button type="submit" class="save-btn" [disabled]="profileForm.invalid || isSubmitting">
+                <span *ngIf="!isSubmitting">Save Changes</span>
+                <span *ngIf="isSubmitting" class="spinner"></span>
+            </button>
+        </div>
+    </form>
+</div>

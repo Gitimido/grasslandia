@@ -25,6 +25,7 @@ import { Subscription, filter } from 'rxjs';
 import { UserService } from '../../core/services/user.service';
 import { User } from '../../models';
 import { gsap } from 'gsap';
+import { SettingsService } from '../../core/services/settings.service';
 
 @Component({
   selector: 'app-side-nav',
@@ -59,7 +60,8 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
     private authService: AuthService,
     private sideNavService: SideNavService,
     private userService: UserService,
-    private router: Router
+    private router: Router,
+    private settingsService: SettingsService
   ) {}
 
   ngOnInit(): void {
@@ -364,5 +366,9 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
         this.isUserMenuOpen = false;
       }
     }
+  }
+
+  openSettings(tab: 'profile' | 'appearance' | 'account' = 'profile'): void {
+    this.settingsService.openSettings(tab);
   }
 }

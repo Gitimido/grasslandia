@@ -1,0 +1,47 @@
+<!-- src/app/components/settings-modal/account-settings/account-settings.component.html -->
+<div class="account-settings">
+    <h3>Account Settings</h3>
+
+    <div class="settings-section">
+        <h4>Delete Account</h4>
+        <p class="section-description">
+            Once you delete your account, there is no going back. Please be certain.
+        </p>
+
+        <button class="delete-account-btn" (click)="toggleDeleteConfirmation()" *ngIf="!showDeleteConfirmation">
+            Delete Account
+        </button>
+
+        <div class="delete-confirmation" *ngIf="showDeleteConfirmation">
+            <h5>Are you absolutely sure?</h5>
+            <p>
+                This action cannot be undone. This will permanently delete your account and remove all your data from
+                our servers.
+            </p>
+
+            <form [formGroup]="deleteAccountForm" (ngSubmit)="onDeleteAccount()">
+                <div class="form-group">
+                    <label for="confirmation">
+                        To confirm, type "DELETE" in the box below:
+                    </label>
+                    <input type="text" id="confirmation" formControlName="confirmation" placeholder="DELETE">
+                </div>
+
+                <div *ngIf="errorMessage" class="error-alert">{{ errorMessage }}</div>
+
+                <div class="confirmation-actions">
+                    <button type="button" class="cancel-btn" (click)="toggleDeleteConfirmation()"
+                        [disabled]="isDeleting">
+                        Cancel
+                    </button>
+
+                    <button type="submit" class="confirm-delete-btn"
+                        [disabled]="deleteAccountForm.invalid || isDeleting">
+                        <span *ngIf="!isDeleting">I understand, delete my account</span>
+                        <span *ngIf="isDeleting" class="spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

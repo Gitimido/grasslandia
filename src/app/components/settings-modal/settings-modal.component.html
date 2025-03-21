@@ -1,0 +1,53 @@
+<!-- src/app/components/settings-modal/settings-modal.component.html -->
+<div class="settings-modal-overlay" (click)="closeModal()">
+    <div class="settings-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Settings</h2>
+            <button class="close-btn" (click)="closeModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+
+        <div class="modal-content">
+            <div class="settings-sidebar">
+                <ul class="settings-nav">
+                    <li>
+                        <button [class.active]="activeTab === 'profile'" (click)="setActiveTab('profile')">
+                            <span class="nav-icon material-icons">person</span>
+                            <span class="nav-text">Profile</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button [class.active]="activeTab === 'appearance'" (click)="setActiveTab('appearance')">
+                            <span class="nav-icon material-icons">palette</span>
+                            <span class="nav-text">Appearance</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button [class.active]="activeTab === 'account'" (click)="setActiveTab('account')">
+                            <span class="nav-icon material-icons">manage_accounts</span>
+                            <span class="nav-text">Account</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="settings-main">
+                <!-- Profile Settings Tab -->
+                <div class="settings-panel" *ngIf="activeTab === 'profile'">
+                    <app-profile-settings [user]="user"></app-profile-settings>
+                </div>
+
+                <!-- Appearance Settings Tab -->
+                <div class="settings-panel" *ngIf="activeTab === 'appearance'">
+                    <app-appearance-settings [user]="user"></app-appearance-settings>
+                </div>
+
+                <!-- Account Settings Tab -->
+                <div class="settings-panel" *ngIf="activeTab === 'account'">
+                    <app-account-settings [user]="user"></app-account-settings>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

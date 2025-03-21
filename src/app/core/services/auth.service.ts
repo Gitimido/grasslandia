@@ -7,8 +7,8 @@ import {
   User,
   Session,
 } from '@supabase/supabase-js';
-import { Observable, from, throwError, of } from 'rxjs';
-import { tap, catchError, finalize, map } from 'rxjs/operators';
+import { Observable, from, throwError, of, forkJoin } from 'rxjs';
+import { tap, catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environment';
 import { Store } from '@ngrx/store';
 import {
@@ -226,5 +226,79 @@ export class AuthService {
         this.store.dispatch(logout());
       }
     });
+  }
+
+  deleteAccount(): Observable<void> {
+    if (!this.user) {
+      return throwError(() => new Error('No authenticated user'));
+    }
+
+    const userId = this.user.id;
+    this.store.dispatch(setAuthLoading({ isLoading: true }));
+
+    // First we'll remove the user's data from Supabase tables
+    return this.deleteUserData(userId).pipe(
+      switchMap(() => from(this.supabase.auth.admin.deleteUser(userId))),
+      map(() => {
+        // Dispatch logout action to clear local state
+        this.store.dispatch(logout());
+        return undefined;
+      }),
+      catchError((error) => {
+        console.error('Error deleting account:', error);
+        this.store.dispatch(setAuthError({ error: error.message }));
+        return throwError(
+          () => new Error('Failed to delete account: ' + error.message)
+        );
+      }),
+      finalize(() => {
+        this.store.dispatch(setAuthLoading({ isLoading: false }));
+      })
+    );
+  }
+
+  /**
+   * Delete all user data from the database
+   * @param userId The ID of the user to delete data for
+   */
+  private deleteUserData(userId: string): Observable<void> {
+    // Create an array of deletion tasks
+    const deleteTasks = [
+      // Delete user's posts
+      from(this.supabase.from('posts').delete().eq('user_id', userId)),
+
+      // Delete user's comments
+      from(this.supabase.from('comments').delete().eq('user_id', userId)),
+
+      // Delete user's likes
+      from(this.supabase.from('likes').delete().eq('user_id', userId)),
+
+      // Delete user's media
+      from(this.supabase.from('media').delete().eq('user_id', userId)),
+
+      // Delete user's notifications (sent to this user)
+      from(this.supabase.from('notifications').delete().eq('user_id', userId)),
+
+      // Delete user's notifications (sent by this user)
+      from(this.supabase.from('notifications').delete().eq('actor_id', userId)),
+
+      // Delete user's friendships (initiated by this user)
+      from(this.supabase.from('friendships').delete().eq('user_id', userId)),
+
+      // Delete user's friendships (received by this user)
+      from(this.supabase.from('friendships').delete().eq('friend_id', userId)),
+
+      // Delete user record last (to maintain referential integrity)
+      from(this.supabase.from('users').delete().eq('id', userId)),
+    ];
+
+    // Execute all deletions in parallel
+    return forkJoin(deleteTasks).pipe(
+      map(() => undefined),
+      catchError((error) => {
+        console.error('Error deleting user data:', error);
+        return throwError(() => new Error('Failed to delete user data'));
+      })
+    );
   }
 }
