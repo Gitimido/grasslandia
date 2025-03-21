@@ -168,6 +168,11 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
     this.isSearchOpen = false;
   }
 
+  handleSearch(query: string): void {
+    // Navigate to search results page with the query
+    this.router.navigate(['/search'], { queryParams: { q: query } });
+  }
+
   toggleUserMenu(): void {
     this.isUserMenuOpen = !this.isUserMenuOpen;
   }

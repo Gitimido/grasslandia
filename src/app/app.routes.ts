@@ -22,7 +22,6 @@ export const routes: Routes = [
         (m) => m.SignUpComponent
       ),
   },
-  // In src/app/app.routes.ts, ensure there's a route for bookmarks:
   {
     path: 'bookmarks',
     loadComponent: () =>
@@ -38,6 +37,20 @@ export const routes: Routes = [
     path: 'profile',
     redirectTo: '/profile/me',
     pathMatch: 'full',
+  },
+  {
+    path: 'search',
+    loadComponent: () =>
+      import('./pages/search-results/search-results.component').then(
+        (m) => m.SearchResultsComponent
+      ),
+  },
+  {
+    path: 'post/:id',
+    loadComponent: () =>
+      import('./pages/post-detail/post-detail.component').then(
+        (m) => m.PostDetailComponent
+      ),
   },
   {
     path: '**',

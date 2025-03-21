@@ -1,4 +1,3 @@
-// src/app/components/search-popup/search-popup.component.ts
 import {
   Component,
   Input,
@@ -11,11 +10,22 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
+import { Router, RouterModule } from '@angular/router';
+import {
+  Subject,
+  debounceTime,
+  distinctUntilChanged,
+  switchMap,
+  of,
+} from 'rxjs';
+import {
+  SearchService,
+  SearchResult,
+} from '../../core/services/search.service';
 @Component({
   selector: 'app-search-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
     <div
       class="search-overlay"
@@ -28,7 +38,6 @@ import { FormsModule } from '@angular/forms';
         [class.slide-up]="isClosing"
         (click)="$event.stopPropagation()"
       >
-        <!-- Rest of your template remains the same -->
         <div class="search-header">
           <div class="search-input-container">
             <span class="search-icon">
@@ -50,6 +59,7 @@ import { FormsModule } from '@angular/forms';
               placeholder="Search Grasslandia..."
               [(ngModel)]="searchTerm"
               (input)="onSearchInput()"
+              (keydown.enter)="performSearch()"
               #searchInput
               autofocus
             />
@@ -74,29 +84,56 @@ import { FormsModule } from '@angular/forms';
         </div>
 
         <div class="search-results" *ngIf="searchTerm">
-          <!-- Recent searches shown when search is empty -->
-          <div class="search-section" *ngIf="searchResults.length === 0">
+          <!-- Loading state -->
+          <div class="loading-state" *ngIf="isLoading">
+            <div class="spinner"></div>
+            <span>Searching...</span>
+          </div>
+
+          <!-- No results -->
+          <div
+            class="search-section"
+            *ngIf="!isLoading && searchResults.length === 0"
+          >
             <div class="no-results">
               <p>No results found for "{{ searchTerm }}"</p>
+              <button (click)="performSearch()" class="search-all-btn">
+                Search for posts with this term
+              </button>
             </div>
           </div>
 
           <!-- Results shown when search returns items -->
-          <div class="search-section" *ngIf="searchResults.length > 0">
-            <div class="result-item" *ngFor="let result of searchResults">
+          <div
+            class="search-section"
+            *ngIf="!isLoading && searchResults.length > 0"
+          >
+            <div
+              class="result-item"
+              *ngFor="let result of searchResults"
+              (click)="navigateToResult(result)"
+            >
               <div class="result-icon" [ngClass]="result.type">
-                <svg
-                  *ngIf="result.type === 'user'"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                >
-                  <path
-                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                    fill="currentColor"
+                <ng-container *ngIf="result.type === 'user'">
+                  <img
+                    *ngIf="result.imageUrl"
+                    [src]="result.imageUrl"
+                    [alt]="result.title"
+                    class="user-avatar"
                   />
-                </svg>
+                  <svg
+                    *ngIf="!result.imageUrl"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                  >
+                    <path
+                      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </ng-container>
                 <svg
                   *ngIf="result.type === 'post'"
                   xmlns="http://www.w3.org/2000/svg"
@@ -111,9 +148,20 @@ import { FormsModule } from '@angular/forms';
                 </svg>
               </div>
               <div class="result-details">
-                <div class="result-name">{{ result.name }}</div>
-                <div class="result-meta">{{ result.meta }}</div>
+                <div class="result-name">{{ result.title }}</div>
+                <div class="result-meta">{{ result.subtitle }}</div>
+                <div *ngIf="result.content" class="result-content">
+                  {{ result.content | slice : 0 : 80
+                  }}{{ result.content.length > 80 ? '...' : '' }}
+                </div>
               </div>
+            </div>
+
+            <!-- View all results button -->
+            <div class="view-all-container">
+              <button class="view-all-btn" (click)="performSearch()">
+                See all results for "{{ searchTerm }}"
+              </button>
             </div>
           </div>
         </div>
@@ -122,10 +170,52 @@ import { FormsModule } from '@angular/forms';
           <div class="search-section">
             <div class="section-header">
               <span>Recent Searches</span>
-              <button class="clear-all">Clear All</button>
+              <button class="clear-all" (click)="clearRecentSearches()">
+                Clear All
+              </button>
             </div>
-            <div class="no-history">
-              <p>No recent searches</p>
+            <div class="recent-searches">
+              <div *ngIf="recentSearches.length === 0" class="no-history">
+                <p>No recent searches</p>
+              </div>
+              <div *ngIf="recentSearches.length > 0" class="recent-list">
+                <div
+                  *ngFor="let search of recentSearches"
+                  class="recent-item"
+                  (click)="selectRecentSearch(search)"
+                >
+                  <span class="recent-icon">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                    >
+                      <path
+                        d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
+                  <span class="recent-text">{{ search }}</span>
+                  <button
+                    class="remove-recent"
+                    (click)="removeRecentSearch($event, search)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                    >
+                      <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -173,7 +263,7 @@ import { FormsModule } from '@angular/forms';
         position: absolute;
         top: 12px;
         width: 90%;
-        max-width: 500px;
+        max-width: 600px;
         background-color: white;
         border-radius: 8px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -207,7 +297,6 @@ import { FormsModule } from '@angular/forms';
         }
       }
 
-      /* Rest of your styles remain the same */
       .search-header {
         padding: 12px 16px;
         border-bottom: 1px solid #e4e6eb;
@@ -254,7 +343,7 @@ import { FormsModule } from '@angular/forms';
       }
 
       .search-results {
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
       }
 
@@ -287,10 +376,29 @@ import { FormsModule } from '@angular/forms';
       .no-history,
       .no-results {
         display: flex;
+        flex-direction: column;
         justify-content: center;
+        align-items: center;
         padding: 20px 0;
         color: #65676b;
         font-size: 14px;
+      }
+
+      .search-all-btn,
+      .view-all-btn {
+        margin-top: 12px;
+        background-color: #f0f2f5;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #4267b2;
+        cursor: pointer;
+        font-weight: 500;
+
+        &:hover {
+          background-color: #e4e6eb;
+        }
       }
 
       .result-item {
@@ -315,10 +423,17 @@ import { FormsModule } from '@angular/forms';
         margin-right: 12px;
         background-color: #e4e6eb;
         color: #050505;
+        overflow: hidden;
 
         &.user {
           background-color: #e1f5fe;
           color: #0288d1;
+        }
+
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          object-fit: cover;
         }
 
         &.post {
@@ -341,21 +456,149 @@ import { FormsModule } from '@angular/forms';
         font-size: 13px;
         color: #65676b;
       }
+
+      .result-content {
+        font-size: 13px;
+        color: #65676b;
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 0;
+
+        .spinner {
+          width: 24px;
+          height: 24px;
+          border: 2px solid #f3f3f3;
+          border-top: 2px solid #4a90e2;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 12px;
+        }
+
+        span {
+          color: #65676b;
+          font-size: 14px;
+        }
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .view-all-container {
+        text-align: center;
+        padding: 12px 0;
+        border-top: 1px solid #e4e6eb;
+      }
+
+      .recent-list {
+        padding: 0 16px;
+      }
+
+      .recent-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        cursor: pointer;
+
+        &:hover {
+          background-color: #f0f2f5;
+        }
+
+        .recent-icon {
+          display: flex;
+          align-items: center;
+          color: #65676b;
+          margin-right: 12px;
+        }
+
+        .recent-text {
+          flex: 1;
+          font-size: 14px;
+          color: #050505;
+        }
+
+        .remove-recent {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          color: #65676b;
+          cursor: pointer;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          opacity: 0.7;
+
+          &:hover {
+            background-color: #e4e6eb;
+            opacity: 1;
+          }
+        }
+      }
     `,
   ],
 })
 export class SearchPopupComponent implements AfterViewInit {
   @Input() isOpen: boolean = false;
   @Output() closeRequested = new EventEmitter<void>();
+  @Output() search = new EventEmitter<string>();
 
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchTerm: string = '';
-  searchResults: any[] = [];
+  searchResults: SearchResult[] = [];
+  isLoading: boolean = false;
+  recentSearches: string[] = [];
 
   // Add these properties for controlling the animations
   isVisible: boolean = false;
   isClosing: boolean = false;
+
+  // Create a subject for debounced search
+  private searchTerms = new Subject<string>();
+
+  constructor(private searchService: SearchService, private router: Router) {
+    // Load recent searches from localStorage
+    this.loadRecentSearches();
+
+    // Setup debounced search for typeahead
+    this.searchTerms
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => {
+          if (term.length < 2) {
+            return of([]);
+          }
+          this.isLoading = true;
+          return this.searchService.searchAll(term, 5);
+        })
+      )
+      .subscribe({
+        next: (results) => {
+          this.searchResults = results;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error searching:', error);
+          this.isLoading = false;
+        },
+      });
+  }
 
   ngAfterViewInit() {
     this.focusInput();
@@ -396,32 +639,103 @@ export class SearchPopupComponent implements AfterViewInit {
   }
 
   onSearchInput() {
-    // Mock search functionality
-    if (this.searchTerm.length > 2) {
-      // Simulate API call delay
-      setTimeout(() => {
-        this.searchResults = [
-          {
-            type: 'user',
-            name: 'John Doe',
-            meta: 'Friend',
-          },
-          {
-            type: 'post',
-            name: 'Weekend Adventures',
-            meta: '2 days ago',
-          },
-        ].filter((result) =>
-          result.name.toLowerCase().includes(this.searchTerm.toLowerCase())
-        );
-      }, 300);
+    // Send the search term to the debounced observable
+    if (this.searchTerm && this.searchTerm.length >= 2) {
+      this.searchTerms.next(this.searchTerm);
     } else {
       this.searchResults = [];
     }
   }
 
+  performSearch() {
+    if (!this.searchTerm || this.searchTerm.length < 2) return;
+
+    // Add to recent searches
+    this.addToRecentSearches(this.searchTerm);
+
+    // Emit the search event
+    this.search.emit(this.searchTerm);
+
+    // Navigate to search results page
+    this.router.navigate(['/search'], {
+      queryParams: { q: this.searchTerm },
+    });
+
+    // Close the popup
+    this.closeRequested.emit();
+  }
+
+  navigateToResult(result: SearchResult) {
+    console.log('Navigating to result:', result);
+
+    if (result.type === 'user') {
+      // For user results, keep navigating to profile pages
+      const username = result.subtitle?.replace('@', '');
+      console.log('Navigating to user profile:', username);
+      this.router.navigate(['/profile', username]);
+    } else if (result.type === 'post') {
+      // For post results, navigate to search page with post ID parameter
+      console.log('Navigating to search with post:', result.id);
+      this.router.navigate(['/search'], {
+        queryParams: {
+          postId: result.id,
+        },
+      });
+    }
+
+    // Close the popup after navigation
+    this.closeRequested.emit();
+  }
+
   clearSearch() {
     this.searchTerm = '';
     this.searchResults = [];
+  }
+
+  // Recent searches management
+  private loadRecentSearches() {
+    const searches = localStorage.getItem('recentSearches');
+    if (searches) {
+      try {
+        this.recentSearches = JSON.parse(searches);
+      } catch (e) {
+        this.recentSearches = [];
+      }
+    }
+  }
+
+  private saveRecentSearches() {
+    localStorage.setItem('recentSearches', JSON.stringify(this.recentSearches));
+  }
+
+  addToRecentSearches(search: string) {
+    // Remove if already exists to avoid duplicates
+    this.recentSearches = this.recentSearches.filter((s) => s !== search);
+
+    // Add to the beginning
+    this.recentSearches.unshift(search);
+
+    // Limit to 10 recent searches
+    if (this.recentSearches.length > 10) {
+      this.recentSearches = this.recentSearches.slice(0, 10);
+    }
+
+    this.saveRecentSearches();
+  }
+
+  removeRecentSearch(event: Event, search: string) {
+    event.stopPropagation();
+    this.recentSearches = this.recentSearches.filter((s) => s !== search);
+    this.saveRecentSearches();
+  }
+
+  clearRecentSearches() {
+    this.recentSearches = [];
+    this.saveRecentSearches();
+  }
+
+  selectRecentSearch(search: string) {
+    this.searchTerm = search;
+    this.performSearch();
   }
 }
