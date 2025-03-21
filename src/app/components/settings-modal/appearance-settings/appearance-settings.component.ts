@@ -2,7 +2,10 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { User } from '../../../models';
-import { ThemeService } from '../../../core/services/theme.service';
+import {
+  ThemeService,
+  ThemeOption,
+} from '../../../core/services/theme.service';
 import { UserService } from '../../../core/services/user.service';
 import { finalize } from 'rxjs/operators';
 
@@ -17,14 +20,33 @@ export class AppearanceSettingsComponent implements OnInit {
   @Input() user: User | null = null;
 
   availableThemes = [
-    { value: 'light' as const, label: 'Light', color: '#ffffff' },
-    { value: 'dark' as const, label: 'Dark', color: '#1c1e21' },
-    { value: 'blue' as const, label: 'Blue', color: '#1877f2' },
-    { value: 'purple' as const, label: 'Purple', color: '#8a52e6' },
-    { value: 'green' as const, label: 'Green', color: '#42b72a' },
+    {
+      value: 'light' as ThemeOption,
+      label: 'Light Mode',
+      color: '#ffffff',
+      icon: 'light_mode',
+    },
+    {
+      value: 'dark' as ThemeOption,
+      label: 'Dark Mode',
+      color: '#242526',
+      icon: 'dark_mode',
+    },
+    {
+      value: 'night-blue' as ThemeOption,
+      label: 'Night Blue',
+      color: '#2c3e50',
+      icon: 'nightlight',
+    },
+    {
+      value: 'green-grass' as ThemeOption,
+      label: 'Green Grass',
+      color: '#4caf50',
+      icon: 'grass',
+    },
   ];
 
-  currentTheme: 'light' | 'dark' | 'blue' | 'purple' | 'green' = 'light';
+  currentTheme: ThemeOption = 'light';
   displayMode: 'default' | 'compact' = 'default';
 
   errorMessage = '';
@@ -37,8 +59,15 @@ export class AppearanceSettingsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    if (this.user) {
-      this.currentTheme = this.user.theme;
+    // Get the current theme from the theme service
+    this.themeService.currentTheme$.subscribe((theme) => {
+      this.currentTheme = theme;
+    });
+
+    // Determine current theme from user profile if available
+    if (this.user && this.user.theme) {
+      // Handle legacy theme names by mapping to new UI themes
+      this.currentTheme = this.themeService.getUiThemeValue(this.user.theme);
     }
 
     // Get the current display mode from localStorage if available
@@ -51,7 +80,7 @@ export class AppearanceSettingsComponent implements OnInit {
     }
   }
 
-  setTheme(theme: 'light' | 'dark' | 'blue' | 'purple' | 'green'): void {
+  setTheme(theme: ThemeOption): void {
     if (!this.user || this.isSubmitting) return;
 
     this.isSubmitting = true;
@@ -59,8 +88,12 @@ export class AppearanceSettingsComponent implements OnInit {
     this.successMessage = '';
     this.currentTheme = theme;
 
+    // Map UI theme to database theme value
+    const dbTheme = this.themeService.getDbThemeValue(theme);
+
+    // Send the database theme value to the server
     const userData = {
-      theme: theme,
+      theme: dbTheme,
     };
 
     this.userService
@@ -69,12 +102,12 @@ export class AppearanceSettingsComponent implements OnInit {
       .subscribe({
         next: (updatedUser) => {
           if (updatedUser) {
-            // Apply the theme
+            // Apply the UI theme
             this.themeService.setTheme(theme);
 
-            // Update the local user object
+            // Update the local user object with the database theme
             if (this.user) {
-              this.user.theme = theme;
+              this.user.theme = dbTheme;
             }
 
             this.successMessage = 'Theme updated successfully';

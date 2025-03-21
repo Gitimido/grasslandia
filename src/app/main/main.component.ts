@@ -1,20 +1,21 @@
 // src/app/main/main.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { selectIsAuthenticated } from '../core/store/Auth/auth.selectors';
 import { SideNavComponent } from '../components/side-nav/side-nav.component';
 import { TopNavBarComponent } from '../components/top-nav-bar/top-nav-bar.component';
 import { SideNavService } from '../core/services/side-nav.service';
+import { ThemeService, ThemeOption } from '../core/services/theme.service';
 
 @Component({
   selector: 'app-main',
   standalone: true,
   imports: [CommonModule, RouterOutlet, SideNavComponent, TopNavBarComponent],
   template: `
-    <div class="app-wrapper">
+    <div class="app-wrapper theme-transition" [ngClass]="currentThemeClass">
       <app-side-nav></app-side-nav>
 
       <ng-container *ngIf="isAuthenticated$ | async">
@@ -38,15 +39,18 @@ import { SideNavService } from '../core/services/side-nav.service';
         display: block;
         min-height: 100vh;
         width: 100%;
-        background-color: #f0f4f8; /* Consistent background color for entire app */
         position: relative;
+        transition: background-color 0.3s ease;
+        background-color: var(--background-color);
+        color: var(--text-color);
       }
 
       .main-content {
         padding: 24px;
-        transition: padding-left 0.3s ease;
+        transition: padding-left 0.3s ease, background-color 0.3s ease;
         min-height: 100vh;
         box-sizing: border-box;
+        background-color: var(--background-color);
       }
 
       .sidebar-collapsed {
@@ -70,18 +74,49 @@ import { SideNavService } from '../core/services/side-nav.service';
     `,
   ],
 })
-export class MainComponent implements OnInit {
+export class MainComponent implements OnInit, OnDestroy {
   isAuthenticated$: Observable<boolean>;
   isSidebarCollapsed = true; // Default state
+  currentThemeClass = 'theme-light'; // Default theme class
 
-  constructor(private store: Store, private sideNavService: SideNavService) {
+  private themeSubscription: Subscription | null = null;
+  private sidebarSubscription: Subscription | null = null;
+
+  constructor(
+    private store: Store,
+    private sideNavService: SideNavService,
+    private themeService: ThemeService
+  ) {
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
   }
 
   ngOnInit(): void {
     // Subscribe to sidebar state
-    this.sideNavService.sidebarState.subscribe((state) => {
-      this.isSidebarCollapsed = state;
-    });
+    this.sidebarSubscription = this.sideNavService.sidebarState.subscribe(
+      (state) => {
+        this.isSidebarCollapsed = state;
+      }
+    );
+
+    // Subscribe to theme changes
+    this.themeSubscription = this.themeService.currentTheme$.subscribe(
+      (theme) => {
+        this.currentThemeClass = `theme-${theme}`;
+
+        // Optional: You could log theme changes for debugging
+        console.log('Theme changed to:', theme);
+      }
+    );
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions to prevent memory leaks
+    if (this.sidebarSubscription) {
+      this.sidebarSubscription.unsubscribe();
+    }
+
+    if (this.themeSubscription) {
+      this.themeSubscription.unsubscribe();
+    }
   }
 }

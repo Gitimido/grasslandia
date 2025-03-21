@@ -9,7 +9,9 @@
         <div class="theme-options">
             <div *ngFor="let theme of availableThemes" class="theme-option"
                 [class.active]="currentTheme === theme.value" (click)="setTheme(theme.value)">
-                <div class="theme-color" [style.backgroundColor]="theme.color"></div>
+                <div class="theme-color" [style.backgroundColor]="theme.color">
+                    <span class="material-icons">{{ theme.icon }}</span>
+                </div>
                 <div class="theme-label">{{ theme.label }}</div>
             </div>
         </div>
@@ -20,12 +22,16 @@
         <p class="section-description">Choose how you want content to be displayed.</p>
 
         <div class="display-options">
-            <div class="display-option" [class.active]="displayMode === 'default'" (click)="displayMode = 'default'">
-                <div class="option-preview default-preview"></div>
+            <div class="display-option" [class.active]="displayMode === 'default'" (click)="setDisplayMode('default')">
+                <div class="option-preview default-preview">
+                    <span class="material-icons">view_agenda</span>
+                </div>
                 <div class="option-label">Default</div>
             </div>
-            <div class="display-option" [class.active]="displayMode === 'compact'" (click)="displayMode = 'compact'">
-                <div class="option-preview compact-preview"></div>
+            <div class="display-option" [class.active]="displayMode === 'compact'" (click)="setDisplayMode('compact')">
+                <div class="option-preview compact-preview">
+                    <span class="material-icons">view_compact</span>
+                </div>
                 <div class="option-label">Compact</div>
             </div>
         </div>
