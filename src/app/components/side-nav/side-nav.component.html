@@ -1,14 +1,38 @@
-<!-- src/app/components/side-nav/side-nav.component.html (modified) -->
-<div class="sidebar" [class.collapsed]="isCollapsed" [class.expanded]="!isCollapsed" (mouseenter)="onMouseEnter()"
-    (mouseleave)="onMouseLeave()">
-    <!-- Logo -->
+<!-- src/app/components/side-nav/side-nav.component.html (simplified) -->
+<div class="sidebar" [class.collapsed]="isCollapsed || forceCollapsed"
+    [class.expanded]="!isCollapsed && !forceCollapsed" (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
+    <!-- Enhanced Logo -->
+    <!-- In side-nav.component.html -->
     <div class="logo-container">
         <a routerLink="/" class="logo">
-            <span class="logo-icon">G</span>
-            <span class="logo-text" *ngIf="!isCollapsed">Grasslandia</span>
+            <!-- Expanded logo -->
+            <span #logoText class="logo-text" [class.hidden]="isCollapsed">
+                <span *ngFor="let char of logoChars; let i = index" class="letter" #letterElement>{{char}}</span>
+            </span>
+
+            <!-- Collapsed logo icon with SVG -->
+            <div class="logo-icon" [class.hidden]="!isCollapsed" #logoIcon>
+                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50C100 22.4 77.6 0 50 0ZM50 85C30.7 85 15 69.3 15 50C15 30.7 30.7 15 50 15C69.3 15 85 30.7 85 50C85 69.3 69.3 85 50 85Z"
+                        fill="url(#gradient1)" />
+                    <path
+                        d="M65 40H55V30C55 27.2 52.8 25 50 25C47.2 25 45 27.2 45 30V40H35C32.2 40 30 42.2 30 45C30 47.8 32.2 50 35 50H45V70C45 72.8 47.2 75 50 75C52.8 75 55 72.8 55 70V50H65C67.8 50 70 47.8 70 45C70 42.2 67.8 40 65 40Z"
+                        fill="url(#gradient2)" />
+                    <defs>
+                        <linearGradient id="gradient1" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="#66D7AD" />
+                            <stop offset="1" stop-color="#4DB896" />
+                        </linearGradient>
+                        <linearGradient id="gradient2" x1="30" y1="25" x2="70" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="#FFFFFF" />
+                            <stop offset="1" stop-color="#F0F0F0" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
         </a>
     </div>
-
     <!-- Main Navigation -->
     <div class="nav-container">
         <nav class="main-nav">
@@ -19,7 +43,7 @@
                         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor" />
                     </svg>
                 </span>
-                <span class="nav-text" *ngIf="!isCollapsed">Home</span>
+                <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Home</span>
             </a>
 
             <!-- Search button - Always visible -->
@@ -31,13 +55,11 @@
                             fill="currentColor" />
                     </svg>
                 </span>
-                <span class="nav-text" *ngIf="!isCollapsed">Search</span>
+                <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Search</span>
             </button>
 
             <!-- Authenticated user only navigation -->
             <ng-container *ngIf="currentUser">
-                <!-- Removed Notifications and Friends links (moved to top nav) -->
-
                 <a routerLink="/messages" class="nav-item" routerLinkActive="active">
                     <span class="nav-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -46,7 +68,7 @@
                                 fill="currentColor" />
                         </svg>
                     </span>
-                    <span class="nav-text" *ngIf="!isCollapsed">Messages</span>
+                    <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Messages</span>
                 </a>
                 <a routerLink="/bookmarks" class="nav-item" routerLinkActive="active">
                     <span class="nav-icon">
@@ -54,7 +76,7 @@
                             <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor" />
                         </svg>
                     </span>
-                    <span class="nav-text" *ngIf="!isCollapsed">Bookmarks</span>
+                    <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Bookmarks</span>
                 </a>
                 <a routerLink="/profile" class="nav-item" routerLinkActive="active">
                     <span class="nav-icon">
@@ -64,7 +86,7 @@
                                 fill="currentColor" />
                         </svg>
                     </span>
-                    <span class="nav-text" *ngIf="!isCollapsed">Profile</span>
+                    <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Profile</span>
                 </a>
                 <a routerLink="/settings" class="nav-item" routerLinkActive="active">
                     <span class="nav-icon">
@@ -74,22 +96,10 @@
                                 fill="currentColor" />
                         </svg>
                     </span>
-                    <span class="nav-text" *ngIf="!isCollapsed">Settings</span>
+                    <span class="nav-text" *ngIf="!isCollapsed && !forceCollapsed">Settings</span>
                 </a>
             </ng-container>
         </nav>
-    </div>
-
-    <!-- Create Post Button - Only for authenticated users -->
-    <div class="create-post-container" *ngIf="currentUser">
-        <button class="create-post-btn" (click)="createNewPost()">
-            <span class="btn-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor" />
-                </svg>
-            </span>
-            <span class="btn-text" *ngIf="!isCollapsed">Create Post</span>
-        </button>
     </div>
 
     <!-- Auth buttons for non-logged users -->
@@ -102,7 +112,7 @@
                         fill="currentColor" />
                 </svg>
             </span>
-            <span class="auth-text" *ngIf="!isCollapsed">Sign In</span>
+            <span class="auth-text" *ngIf="!isCollapsed && !forceCollapsed">Sign In</span>
         </a>
         <a routerLink="/signup" class="auth-button signup">
             <span class="auth-icon">
@@ -112,13 +122,13 @@
                         fill="currentColor" />
                 </svg>
             </span>
-            <span class="auth-text" *ngIf="!isCollapsed">Sign Up</span>
+            <span class="auth-text" *ngIf="!isCollapsed && !forceCollapsed">Sign Up</span>
         </a>
     </div>
 
-    <!-- User Info - Only for authenticated users -->
+    <!-- Enhanced User Info with fixed avatar -->
     <div class="user-container" *ngIf="currentUser">
-        <div class="user-info" [class.user-info-collapsed]="isCollapsed" (click)="toggleUserMenu()">
+        <div class="user-info" [class.user-info-collapsed]="isCollapsed || forceCollapsed" (click)="toggleUserMenu()">
             <div class="user-avatar">
                 <ng-container *ngIf="hasAvatar(); else initialTemplate">
                     <img [src]="getUserAvatar()" alt="User avatar">
@@ -127,11 +137,11 @@
                     {{ getUserInitial() }}
                 </ng-template>
             </div>
-            <div class="user-details" *ngIf="!isCollapsed">
+            <div class="user-details" *ngIf="!isCollapsed && !forceCollapsed">
                 <div class="user-name">{{ getUserDisplayName() }}</div>
                 <div class="user-email">{{ currentUser.email }}</div>
             </div>
-            <div class="user-menu-toggle" *ngIf="!isCollapsed">
+            <div class="user-menu-toggle" *ngIf="!isCollapsed && !forceCollapsed">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
                     <path d="M7 10l5 5 5-5z" fill="currentColor" />
                 </svg>
@@ -139,7 +149,7 @@
         </div>
 
         <!-- User dropdown menu -->
-        <div class="user-menu" *ngIf="isUserMenuOpen && !isCollapsed">
+        <div class="user-menu" *ngIf="isUserMenuOpen && !isCollapsed && !forceCollapsed">
             <a routerLink="/profile" class="menu-item">
                 <span class="menu-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
