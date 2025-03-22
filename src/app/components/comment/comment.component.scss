@@ -3,10 +3,18 @@
   padding: 12px;
   margin-bottom: 12px;
   position: relative;
+  background-color: var(--card-background);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast),
+    transform var(--transition-fast);
+
+  &:hover {
+    background-color: var(--hover-color);
+  }
 
   &.is-reply {
     margin-left: 36px;
-    border-left: 2px solid #efefef;
+    border-left: 2px solid var(--border-color);
     padding-left: 16px;
 
     &:before {
@@ -16,7 +24,34 @@
       top: 0;
       bottom: 0;
       width: 2px;
-      background-color: #efefef;
+      background-color: var(--border-color);
+    }
+  }
+
+  /* Deeper nesting levels with different colors */
+  &.level-2 {
+    border-left-color: var(--primary-light);
+
+    &:before {
+      background-color: var(--primary-light);
+    }
+  }
+
+  &.level-3 {
+    border-left-color: var(--accent-color);
+
+    &:before {
+      background-color: var(--accent-color);
+    }
+  }
+
+  &.level-4,
+  &.level-5,
+  &.level-6 {
+    border-left-color: var(--primary-color);
+
+    &:before {
+      background-color: var(--primary-color);
     }
   }
 }
@@ -42,13 +77,13 @@
 .username {
   font-weight: 600;
   font-size: 14px;
-  color: #262626;
+  color: var(--text-color);
   text-decoration: none;
   position: relative;
   display: inline-block;
 
   &:hover {
-    text-decoration: underline;
+    color: var(--primary-color);
 
     .profile-hover-card {
       visibility: visible;
@@ -66,9 +101,9 @@
   transform: translateY(-8px) scale(0.95);
   visibility: hidden;
   opacity: 0;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
   z-index: 100;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(var(--shadow-dropdown));
   pointer-events: none;
 
   &::after {
@@ -80,26 +115,27 @@
     height: 0;
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-top: 8px solid white;
+    border-top: 8px solid var(--card-background);
   }
 }
 
 .hover-card-content {
-  background-color: white;
-  border-radius: 8px;
+  background-color: var(--card-background);
+  border-radius: var(--radius-md);
   padding: 12px;
   width: 200px;
   display: flex;
   align-items: center;
+  border: 1px solid var(--border-color);
 }
 
 .hover-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   object-fit: cover;
   margin-right: 12px;
-  border: 2px solid #f0f2f5;
+  border: var(--avatar-border);
 }
 
 .hover-user-info {
@@ -111,7 +147,7 @@
 .hover-username {
   font-weight: 600;
   font-size: 15px;
-  color: #262626;
+  color: var(--text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -119,7 +155,8 @@
 
 .hover-email {
   font-size: 13px;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -128,7 +165,8 @@
 
 .timestamp {
   font-size: 12px;
-  color: #8e8e8e;
+  color: var(--text-color);
+  opacity: 0.7;
   margin-top: 2px;
 }
 
@@ -141,18 +179,23 @@
   background: none;
   border: none;
   padding: 4px;
-  border-radius: 4px;
-  color: #65676b;
+  border-radius: var(--radius-full);
+  color: var(--text-color);
+  opacity: 0.8;
   cursor: pointer;
   display: flex;
   align-items: center;
+  transition: all var(--transition-fast);
 
   &:hover {
-    background-color: #f0f2f5;
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+    opacity: 1;
+    transform: translateY(-1px);
   }
 
   &.liked {
-    color: #ed4956;
+    color: var(--error-color);
   }
 
   .material-icons {
@@ -172,7 +215,7 @@
 .comment-content {
   font-size: 14px;
   line-height: 1.4;
-  color: #1c1e21;
+  color: var(--text-color);
   word-break: break-word;
   margin-left: 0; /* Adjust this since we removed the avatar */
 }
@@ -187,16 +230,21 @@
 .reply-btn {
   background: none;
   border: none;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.8;
   font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
 
   &:hover {
-    background-color: #f0f2f5;
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+    opacity: 1;
+    transform: translateY(-1px);
   }
 
   .material-icons {
@@ -213,15 +261,17 @@
   textarea {
     width: 100%;
     padding: 10px;
-    border: 1px solid #dddfe2;
-    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     resize: vertical;
     font-size: 14px;
+    background-color: var(--card-background);
+    color: var(--text-color);
 
     &:focus {
       outline: none;
-      border-color: #1876f2;
-      box-shadow: 0 0 0 2px rgba(24, 118, 242, 0.2);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
     }
   }
 
@@ -237,34 +287,35 @@
   .save-btn,
   .submit-btn {
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all var(--transition-fast);
   }
 
   .cancel-btn {
-    background-color: #f0f2f5;
-    color: #65676b;
+    background-color: var(--hover-color);
+    color: var(--text-color);
 
     &:hover {
-      background-color: #dddfe2;
+      background-color: var(--secondary-color);
     }
   }
 
   .save-btn,
   .submit-btn {
-    background-color: #1876f2;
+    background-color: var(--primary-color);
     color: white;
 
     &:hover {
-      background-color: #166fe5;
+      background-color: var(--primary-dark);
+      transform: translateY(-1px);
     }
 
     &:disabled {
-      background-color: #9cb4d8;
+      opacity: 0.6;
       cursor: not-allowed;
     }
   }
@@ -273,63 +324,16 @@
 .replies {
   margin-top: 12px;
 }
-.comment-container {
-  padding: 12px;
-  margin-bottom: 12px;
-  position: relative;
-
-  &.is-reply {
-    margin-left: 24px;
-    border-left: 2px solid #efefef;
-    padding-left: 16px;
-
-    &:before {
-      content: "";
-      position: absolute;
-      left: -2px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background-color: #efefef;
-    }
-  }
-
-  /* Deeper nesting levels with different colors */
-  &.level-2 {
-    border-left-color: #dfe3ee;
-
-    &:before {
-      background-color: #dfe3ee;
-    }
-  }
-
-  &.level-3 {
-    border-left-color: #c8d1e6;
-
-    &:before {
-      background-color: #c8d1e6;
-    }
-  }
-
-  &.level-4,
-  &.level-5,
-  &.level-6 {
-    border-left-color: #b0c4de;
-
-    &:before {
-      background-color: #b0c4de;
-    }
-  }
-}
 
 /* Style for "replying to" indicator */
 .replying-to {
   font-size: 12px;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.7;
   margin-bottom: 4px;
 
   a {
-    color: #1876f2;
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: 500;
 
@@ -338,200 +342,6 @@
     }
   }
 }
-
-/* Adjust reply form to account for nesting */
-.reply-form {
-  margin-left: 0;
-  width: calc(100% - 8px);
-}
-
-/* Make sure nested replies don't get too narrow on deep levels */
-.replies {
-  margin-top: 12px;
-  max-width: 100%;
-
-  .comment-container {
-    /* After 6 levels, don't indent anymore to prevent content from getting too narrow */
-    &.level-6,
-    &.level-7,
-    &.level-8,
-    &.level-9,
-    &.level-10 {
-      margin-left: 12px;
-    }
-  }
-}
-.comment-container {
-  padding: 12px;
-  margin-bottom: 12px;
-  position: relative;
-
-  &.is-reply {
-    margin-left: 24px;
-    border-left: 2px solid #efefef;
-    padding-left: 16px;
-
-    &:before {
-      content: "";
-      position: absolute;
-      left: -2px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background-color: #efefef;
-    }
-  }
-}
-
-/* Deeper nesting levels with different colors */
-/* Removed empty .level-1 ruleset as it was unnecessary */
-
-.level-2 {
-  border-left-color: #dfe3ee !important;
-
-  &:before {
-    background-color: #31457c !important;
-  }
-}
-
-.level-3 {
-  border-left-color: #c8d1e6 !important;
-
-  &:before {
-    background-color: #c8d1e6 !important;
-  }
-}
-
-.level-4,
-.level-5,
-.level-6 {
-  border-left-color: #b0c4de !important;
-
-  &:before {
-    background-color: #b0c4de !important;
-  }
-}
-
-/* Style for "replying to" indicator */
-.replying-to {
-  font-size: 12px;
-  color: #65676b;
-  margin-bottom: 4px;
-
-  a {
-    color: #1876f2;
-    text-decoration: none;
-    font-weight: 500;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-/* Adjust indentation for very deep nesting levels */
-.level-6,
-.level-7,
-.level-8,
-.level-9,
-.level-10 {
-  margin-left: 12px !important;
-}
-
-/* Profile hover card styling */
-.username-container {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.username {
-  font-weight: 600;
-  font-size: 14px;
-  color: #262626;
-  text-decoration: none;
-  position: relative;
-  display: inline-block;
-
-  &:hover {
-    text-decoration: underline;
-
-    .profile-hover-card {
-      visibility: visible;
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-}
-
-.profile-hover-card {
-  position: absolute;
-  top: -12px;
-  left: -12px;
-  transform: translateY(-8px) scale(0.95);
-  visibility: hidden;
-  opacity: 0;
-  transition: all 0.2s ease;
-  z-index: 100;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
-  pointer-events: none;
-
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: -8px;
-    left: 12px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-top: 8px solid white;
-  }
-}
-
-.hover-card-content {
-  background-color: white;
-  border-radius: 8px;
-  padding: 12px;
-  width: 200px;
-  display: flex;
-  align-items: center;
-}
-
-.hover-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 12px;
-  border: 2px solid #f0f2f5;
-}
-
-.hover-user-info {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.hover-username {
-  font-weight: 600;
-  font-size: 15px;
-  color: #262626;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hover-email {
-  font-size: 13px;
-  color: #65676b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-/* Add to src/app/components/comment/comment.component.scss */
 
 /* View replies button */
 .replies-btn {
@@ -539,16 +349,20 @@
   align-items: center;
   background: none;
   border: none;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.8;
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   margin-left: auto;
+  transition: all var(--transition-fast);
 
   &:hover {
-    background-color: #f0f2f5;
-    color: #1876f2;
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+    opacity: 1;
+    transform: translateY(-1px);
   }
 
   .material-icons {
@@ -567,8 +381,8 @@
   .spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid #f0f2f5;
-    border-top: 2px solid #1876f2;
+    border: 2px solid var(--hover-color);
+    border-top: 2px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 8px;
@@ -576,7 +390,8 @@
 
   span {
     font-size: 13px;
-    color: #65676b;
+    color: var(--text-color);
+    opacity: 0.7;
   }
 }
 
@@ -588,19 +403,21 @@
   .load-more-btn {
     background: none;
     border: none;
-    color: #1876f2;
+    color: var(--primary-color);
     font-size: 13px;
     font-weight: 500;
     padding: 6px 12px;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     cursor: pointer;
+    transition: all var(--transition-fast);
 
     &:hover {
-      background-color: #e7f3ff;
+      background-color: var(--hover-color);
+      transform: translateY(-1px);
     }
 
     &:disabled {
-      color: #8c8c8c;
+      opacity: 0.6;
       cursor: not-allowed;
     }
   }
@@ -612,96 +429,6 @@
   }
   100% {
     transform: rotate(360deg);
-  }
-}
-
-/* Add to src/app/components/comments-section/comments-section.component.scss */
-
-.comments-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #262626;
-    margin: 0;
-  }
-}
-
-.comments-sort {
-  display: flex;
-  gap: 8px;
-
-  .sort-btn {
-    background: none;
-    border: none;
-    font-size: 13px;
-    color: #65676b;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-
-    &:hover {
-      background-color: #f0f2f5;
-    }
-
-    &.active {
-      color: #1876f2;
-      font-weight: 500;
-    }
-  }
-}
-
-.load-more-container {
-  text-align: center;
-  padding: 16px 0;
-
-  .load-more-btn {
-    background-color: #f0f2f5;
-    color: #1876f2;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-
-    &:hover {
-      background-color: #e7f3ff;
-    }
-
-    &:disabled {
-      color: #8c8c8c;
-      background-color: #f0f2f5;
-      cursor: not-allowed;
-    }
-  }
-}
-
-/* Improve loading spinner */
-.loading-replies {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
-  margin-top: 8px;
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #f0f2f5;
-    border-top: 2px solid #1876f2;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 8px;
-  }
-
-  span {
-    font-size: 13px;
-    color: #65676b;
   }
 }
 
@@ -709,21 +436,12 @@
 .no-replies {
   padding: 12px;
   text-align: center;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.7;
   font-size: 13px;
-  background-color: #f0f2f5;
-  border-radius: 8px;
+  background-color: var(--hover-color);
+  border-radius: var(--radius-md);
   margin-top: 8px;
-}
-
-/* Improve animation */
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 /* Better disabled state for buttons */
@@ -732,17 +450,5 @@
 .load-more-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background-color: #9cb4d8;
-}
-
-/* Add transition for smoother UI */
-.replies {
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-/* Improve reply section spacing */
-.replies app-comment {
-  margin-top: 8px;
-  display: block;
+  background-color: var(--primary-color);
 }

@@ -1,15 +1,14 @@
-// src/app/pages/profile/profile.component.scss
+/* src/app/pages/profile/profile.component.scss */
 :host {
   display: block;
   background-color: var(--background-color);
   min-height: 100vh;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .profile-container {
   margin-left: 250px; /* Match the sidebar width */
-  transition: margin-left 0.3s ease;
+  transition: margin-left var(--transition-normal);
 
   &.sidebar-collapsed {
     margin-left: 68px; /* Match the collapsed sidebar width */
@@ -30,7 +29,7 @@
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid var(--secondary-color);
+    border: 3px solid var(--hover-color);
     border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -55,9 +54,9 @@
 }
 
 .error-container {
-  background-color: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.2);
-  border-radius: 8px;
+  background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.1);
+  border: 1px solid rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
+  border-radius: var(--radius-md);
   padding: 20px;
   margin: 40px auto;
   max-width: 600px;
@@ -73,12 +72,12 @@
     background-color: var(--error-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     padding: 10px 20px;
     cursor: pointer;
     font-weight: 500;
     font-size: 14px;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 
     &:hover {
       opacity: 0.9;
@@ -94,45 +93,111 @@
 .profile-content {
   margin: 0 auto;
   max-width: 800px;
+  padding: 24px;
+
+  @media (max-width: 860px) {
+    padding: 16px;
+  }
 }
 
 .profile-header {
   background-color: var(--card-background);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
   margin-bottom: 24px;
   border: 1px solid var(--border-color);
+  animation: slideDown 0.4s ease;
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 .profile-banner {
-  height: 160px;
+  height: 180px;
   background-color: var(--primary-color);
   background-image: linear-gradient(
     120deg,
     var(--primary-color) 0%,
     var(--accent-color) 100%
   );
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.1), transparent);
+  }
 }
 
 .profile-info {
   display: flex;
   padding: 0 20px 20px;
   position: relative;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
 }
 
 .profile-avatar {
   margin-top: -50px;
   margin-right: 20px;
+  position: relative;
+  z-index: 2;
 
   img {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    border-radius: var(--radius-full);
     border: 4px solid var(--card-background);
-    background-color: var(--secondary-color);
+    background-color: var(--hover-color);
     object-fit: cover;
     box-shadow: var(--shadow);
+    transition: transform var(--transition-fast);
+
+    &:hover {
+      transform: scale(1.03);
+    }
+  }
+
+  @media (max-width: 768px) {
+    margin-right: 0;
+    margin-bottom: 16px;
+  }
+}
+
+.avatar-update-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+
+  &:hover {
+    opacity: 1;
   }
 }
 
@@ -142,7 +207,7 @@
 }
 
 .profile-name {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 4px;
   color: var(--text-color);
@@ -160,21 +225,31 @@
   line-height: 1.5;
   color: var(--text-color);
   margin-bottom: 16px;
+  max-width: 600px;
 }
 
 .profile-stats {
   display: flex;
   gap: 24px;
   margin-top: 16px;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: transform var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-2px);
+  }
 
   .stat-value {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-color);
   }
@@ -191,46 +266,54 @@
   gap: 10px;
   margin-top: 20px;
   align-self: flex-end;
+
+  @media (max-width: 768px) {
+    align-self: center;
+    margin-top: 16px;
+  }
 }
 
 .edit-profile-btn,
 .message-btn {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--secondary-color);
+  transition: all var(--transition-fast);
+  background-color: var(--hover-color);
   color: var(--text-color);
   border: 1px solid var(--border-color);
 
   &:hover {
-    background-color: var(--hover-color);
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
   }
 }
 
 /* Friend button styles */
 .friend-btn {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 110px;
+  min-width: 120px;
 
   &.btn-primary {
     background-color: var(--primary-color);
     color: white;
 
     &:hover {
-      opacity: 0.9;
+      background-color: var(--primary-dark);
       transform: translateY(-2px);
+      box-shadow: var(--shadow);
     }
   }
 
@@ -240,26 +323,31 @@
 
     &:hover {
       opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
     }
   }
 
   &.btn-warning {
-    background-color: #f39c12;
+    background-color: var(--warning-color);
     color: white;
 
     &:hover {
       opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
     }
   }
 
   &.btn-disabled {
-    background-color: var(--secondary-color);
+    background-color: var(--hover-color);
     color: var(--text-color);
     opacity: 0.7;
     cursor: not-allowed;
 
     &:hover {
       transform: none;
+      box-shadow: none;
     }
   }
 
@@ -287,11 +375,11 @@
   .accept-btn,
   .reject-btn {
     padding: 8px 16px;
-    border-radius: 20px;
+    border-radius: var(--radius-full);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
     border: none;
   }
 
@@ -301,6 +389,8 @@
 
     &:hover {
       opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
     }
   }
 
@@ -310,6 +400,8 @@
 
     &:hover {
       opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
     }
   }
 
@@ -326,11 +418,25 @@
 .profile-tabs {
   display: flex;
   background-color: var(--card-background);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   margin-bottom: 24px;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  animation: slideUp 0.4s ease;
+  animation-delay: 0.1s;
+  animation-fill-mode: both;
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 .tab-btn {
@@ -343,89 +449,83 @@
   color: var(--text-color);
   opacity: 0.7;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
   border-bottom: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
 
   &:hover {
     background-color: var(--hover-color);
+    opacity: 1;
   }
 
   &.active {
     color: var(--primary-color);
     border-bottom-color: var(--primary-color);
     opacity: 1;
+    font-weight: 600;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  &:hover::after {
+    transform: translateX(0);
+  }
+
+  &.active::after {
+    transform: translateX(0);
   }
 }
 
 .create-post-wrapper {
   margin-bottom: 24px;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
+  animation: slideUp 0.4s ease;
+  animation-delay: 0.2s;
+  animation-fill-mode: both;
 }
 
 .empty-posts {
   background-color: var(--card-background);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 40px;
   text-align: center;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
   border: 1px solid var(--border-color);
+  animation: slideUp 0.4s ease;
+  animation-delay: 0.3s;
+  animation-fill-mode: both;
 
   p {
     color: var(--text-color);
     opacity: 0.7;
     font-size: 16px;
+
+    &::before {
+      content: "📭";
+      display: block;
+      font-size: 36px;
+      margin-bottom: 16px;
+    }
   }
 }
 
 .post-card-item {
   margin-bottom: 16px;
   display: block;
-}
-
-@media (max-width: 768px) {
-  .profile-header {
-    border-radius: 0;
-  }
-
-  .profile-info {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  .profile-avatar {
-    margin-right: 0;
-  }
-
-  .profile-stats {
-    justify-content: center;
-  }
-
-  .profile-actions {
-    align-self: center;
-  }
-
-  .profile-tabs {
-    border-radius: 0;
-  }
-}
-
-.avatar-update-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-  background: rgba(0, 0, 0, 0.5);
-
-  &:hover {
-    opacity: 1;
-  }
+  animation: slideUp 0.4s ease;
+  animation-delay: calc(0.3s + var(--index, 0) * 0.1s);
+  animation-fill-mode: both;
 }

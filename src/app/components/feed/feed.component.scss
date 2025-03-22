@@ -1,3 +1,4 @@
+/* src/app/components/feed/feed.component.scss */
 .feed-container {
   width: 100%;
   max-width: 600px;
@@ -15,7 +16,7 @@
 
   &.group {
     padding: 16px;
-    background-color: #fafafa;
+    background-color: var(--background-color);
   }
 }
 
@@ -24,19 +25,38 @@
   flex-direction: column;
   align-items: center;
   padding: 40px 0;
+  background-color: var(--card-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  animation: pulse 2s infinite ease-in-out;
+
+  @keyframes pulse {
+    0% {
+      box-shadow: var(--shadow-card);
+    }
+    50% {
+      box-shadow: var(--shadow-hover);
+    }
+    100% {
+      box-shadow: var(--shadow-card);
+    }
+  }
 
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #4a90e2;
+    border: 3px solid var(--hover-color);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 20px;
   }
 
   p {
-    color: #666;
+    color: var(--text-color);
+    opacity: 0.8;
     font-size: 16px;
     font-weight: 500;
   }
@@ -52,33 +72,34 @@
 }
 
 .error-container {
-  background-color: #fdeded;
-  border: 1px solid #f9d7d7;
-  border-radius: 8px;
+  background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.1);
+  border: 1px solid rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
+  border-radius: var(--radius-lg);
   padding: 20px;
   margin: 20px 0;
   text-align: center;
 
   .error-message {
-    color: #e74c3c;
+    color: var(--error-color);
     margin-bottom: 16px;
     font-size: 15px;
   }
 
   .retry-button {
-    background-color: #e74c3c;
+    background-color: var(--error-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     padding: 10px 20px;
     cursor: pointer;
     font-weight: 500;
     font-size: 14px;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 
     &:hover {
-      background-color: #c0392b;
+      background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.9);
       transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(var(--error-color-rgb, 229, 57, 53), 0.3);
     }
 
     &:active {
@@ -90,9 +111,15 @@
 .empty-container {
   padding: 60px 0;
   text-align: center;
+  background-color: var(--card-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
 
   .empty-message {
-    color: #777;
+    color: var(--text-color);
+    opacity: 0.7;
     font-size: 16px;
     margin-bottom: 0;
 
@@ -113,11 +140,23 @@
 
 // Specific styles for home feed type
 .home .post-card-item {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-normal);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slide-up 0.5s forwards;
+  animation-delay: calc(var(--index, 0) * 0.1s);
+
+  @keyframes slide-up {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   &:hover {
     transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
   }
 }
 

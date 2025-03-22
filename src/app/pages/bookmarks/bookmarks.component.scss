@@ -1,6 +1,6 @@
-// src/app/pages/bookmarks/bookmarks.component.scss
+/* src/app/pages/bookmarks/bookmarks.component.scss */
 .bookmarks-container {
-  transition: margin-left 0.3s ease;
+  transition: margin-left var(--transition-normal);
   padding: 24px;
   margin-left: 250px; /* Match the sidebar width */
   min-height: 100vh;
@@ -23,13 +23,13 @@
 
 .bookmarks-header {
   background-color: var(--card-background);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   padding: 24px;
   margin-bottom: 24px;
   text-align: center;
   border: 1px solid var(--border-color);
-  animation: fade-in 0.3s ease;
+  animation: fadeIn 0.3s ease;
 
   h1 {
     font-size: 24px;
@@ -47,11 +47,11 @@
   @media (max-width: 768px) {
     padding: 20px;
     margin-bottom: 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 }
 
-@keyframes fade-in {
+@keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -69,15 +69,15 @@
   justify-content: center;
   padding: 60px 0;
   background-color: var(--card-background);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  animation: fade-in 0.3s ease;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  animation: fadeIn 0.3s ease;
   border: 1px solid var(--border-color);
 
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid var(--secondary-color);
+    border: 3px solid var(--hover-color);
     border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -92,10 +92,11 @@
   }
 
   @media (max-width: 768px) {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 }
 
+/* src/app/pages/bookmarks/bookmarks.component.scss (continued) */
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -106,12 +107,12 @@
 }
 
 .error-container {
-  background-color: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.2);
-  border-radius: 16px;
+  background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.1);
+  border: 1px solid rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
+  border-radius: var(--radius-lg);
   padding: 24px;
   text-align: center;
-  animation: fade-in 0.3s ease;
+  animation: fadeIn 0.3s ease;
 
   .error-message {
     color: var(--error-color);
@@ -123,16 +124,17 @@
     background-color: var(--error-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     padding: 10px 20px;
     cursor: pointer;
     font-weight: 500;
     font-size: 14px;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 
     &:hover {
       opacity: 0.9;
       transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
     }
 
     &:active {
@@ -141,19 +143,19 @@
   }
 
   @media (max-width: 768px) {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 20px;
   }
 }
 
 .empty-container {
   background-color: var(--card-background);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   padding: 60px 20px;
   margin-bottom: 24px;
   border: 1px solid var(--border-color);
-  animation: fade-in 0.3s ease;
+  animation: fadeIn 0.3s ease;
 
   .empty-state {
     text-align: center;
@@ -181,7 +183,7 @@
   }
 
   @media (max-width: 768px) {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 40px 20px;
   }
 }
@@ -190,7 +192,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  animation: fade-in 0.3s ease;
+  animation: fadeIn 0.3s ease;
 
   .post-card-item {
     opacity: 0;

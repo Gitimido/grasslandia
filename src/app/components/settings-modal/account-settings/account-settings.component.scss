@@ -1,63 +1,116 @@
 /* src/app/components/settings-modal/account-settings/account-settings.component.scss */
 .account-settings {
   max-width: 600px;
+  animation: fadeIn 0.3s ease;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 .settings-section {
   margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border-color);
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 }
 
 h3 {
-  margin-bottom: 24px;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--text-color);
 }
 
 h4 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
   margin-bottom: 8px;
-  color: #1c1e21;
+  color: var(--text-color);
 }
 
 h5 {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #e74c3c;
+  color: var(--error-color);
 }
 
 .section-description {
   font-size: 14px;
-  color: #65676b;
+  color: var(--text-color);
+  opacity: 0.8;
   margin-bottom: 16px;
+  line-height: 1.5;
 }
 
+/* src/app/components/settings-modal/account-settings/account-settings.component.scss (continued) */
 .delete-account-btn {
-  padding: 8px 16px;
-  background-color: #e74c3c;
+  padding: 10px 18px;
+  background-color: var(--error-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
+  transition: all var(--transition-fast);
 
   &:hover {
-    background-color: #c0392b;
+    background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(var(--error-color-rgb, 229, 57, 53), 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
 .delete-confirmation {
-  background-color: #fef7f7;
-  border: 1px solid #f8c9ca;
-  border-radius: 8px;
-  padding: 16px;
+  background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.1);
+  border: 1px solid rgba(var(--error-color-rgb, 229, 57, 53), 0.3);
+  border-radius: var(--radius-md);
+  padding: 20px;
   margin-top: 16px;
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+
+  @keyframes shake {
+    10%,
+    90% {
+      transform: translate3d(-1px, 0, 0);
+    }
+    20%,
+    80% {
+      transform: translate3d(2px, 0, 0);
+    }
+    30%,
+    50%,
+    70% {
+      transform: translate3d(-4px, 0, 0);
+    }
+    40%,
+    60% {
+      transform: translate3d(4px, 0, 0);
+    }
+  }
 
   p {
     font-size: 14px;
     margin-bottom: 16px;
-    color: #e74c3c;
+    color: var(--error-color);
+    line-height: 1.5;
   }
 }
 
@@ -69,73 +122,101 @@ h5 {
     font-size: 14px;
     margin-bottom: 8px;
     font-weight: 500;
+    color: var(--text-color);
   }
 
   input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #dddfe2;
-    border-radius: 6px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     font-size: 15px;
+    background-color: var(--card-background);
+    color: var(--text-color);
+    transition: all var(--transition-fast);
 
     &:focus {
       outline: none;
-      border-color: #e74c3c;
+      border-color: var(--error-color);
+      box-shadow: 0 0 0 2px rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
     }
   }
 }
 
 .error-alert {
   padding: 12px;
-  background-color: #fbe3e4;
-  color: #e74c3c;
-  border: 1px solid #f8c9ca;
-  border-radius: 6px;
+  background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(var(--error-color-rgb, 229, 57, 53), 0.2);
+  border-radius: var(--radius-md);
   font-size: 14px;
   margin-bottom: 16px;
+  line-height: 1.5;
 }
 
 .confirmation-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  margin-top: 20px;
 }
 
 .cancel-btn {
   padding: 8px 16px;
-  background-color: #f0f2f5;
-  color: #1c1e21;
+  background-color: var(--hover-color);
+  color: var(--text-color);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
+  transition: all var(--transition-fast);
 
   &:hover {
-    background-color: #e4e6eb;
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
   }
 }
 
 .confirm-delete-btn {
   padding: 8px 16px;
-  background-color: #e74c3c;
+  background-color: var(--error-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
-    background-color: #c0392b;
+    background-color: rgba(var(--error-color-rgb, 229, 57, 53), 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(var(--error-color-rgb, 229, 57, 53), 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 }
 

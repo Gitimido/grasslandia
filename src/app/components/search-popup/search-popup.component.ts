@@ -231,6 +231,7 @@ import {
         right: 0;
         bottom: 0;
         background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
         z-index: 1000;
         display: flex;
         justify-content: center;
@@ -264,11 +265,12 @@ import {
         top: 12px;
         width: 90%;
         max-width: 600px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        background-color: var(--card-background);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-dropdown);
         overflow: hidden;
         animation: slide-down 0.3s ease;
+        border: 1px solid var(--border-color);
       }
 
       .slide-up {
@@ -299,21 +301,30 @@ import {
 
       .search-header {
         padding: 12px 16px;
-        border-bottom: 1px solid #e4e6eb;
+        border-bottom: 1px solid var(--border-color);
       }
 
       .search-input-container {
         display: flex;
         align-items: center;
-        background-color: #f0f2f5;
-        border-radius: 20px;
+        background-color: var(--hover-color);
+        border-radius: var(--radius-full);
         padding: 8px 12px;
+        transition: all var(--transition-fast);
+        border: 1px solid transparent;
+
+        &:focus-within {
+          background-color: var(--card-background);
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
       }
 
       .search-icon {
         display: flex;
         align-items: center;
-        color: #65676b;
+        color: var(--text-color);
+        opacity: 0.7;
         margin-right: 8px;
       }
 
@@ -323,6 +334,12 @@ import {
         background: transparent;
         font-size: 15px;
         outline: none;
+        color: var(--text-color);
+
+        &::placeholder {
+          color: var(--text-color);
+          opacity: 0.5;
+        }
       }
 
       .clear-button {
@@ -331,14 +348,17 @@ import {
         justify-content: center;
         background: none;
         border: none;
-        color: #65676b;
+        color: var(--text-color);
+        opacity: 0.7;
         cursor: pointer;
         width: 24px;
         height: 24px;
-        border-radius: 50%;
+        border-radius: var(--radius-full);
+        transition: all var(--transition-fast);
 
         &:hover {
-          background-color: #e4e6eb;
+          background-color: var(--secondary-color);
+          opacity: 1;
         }
       }
 
@@ -358,17 +378,19 @@ import {
         padding: 8px 16px;
         font-size: 15px;
         font-weight: 600;
-        color: #65676b;
+        color: var(--text-color);
 
         .clear-all {
           background: none;
           border: none;
-          color: #4a90e2;
+          color: var(--primary-color);
           font-size: 13px;
           cursor: pointer;
+          transition: all var(--transition-fast);
 
           &:hover {
             text-decoration: underline;
+            opacity: 0.9;
           }
         }
       }
@@ -380,24 +402,27 @@ import {
         justify-content: center;
         align-items: center;
         padding: 20px 0;
-        color: #65676b;
+        color: var(--text-color);
+        opacity: 0.7;
         font-size: 14px;
       }
 
       .search-all-btn,
       .view-all-btn {
         margin-top: 12px;
-        background-color: #f0f2f5;
+        background-color: var(--hover-color);
         border: none;
-        border-radius: 6px;
+        border-radius: var(--radius-md);
         padding: 8px 12px;
         font-size: 14px;
-        color: #4267b2;
+        color: var(--primary-color);
         cursor: pointer;
         font-weight: 500;
+        transition: all var(--transition-fast);
 
         &:hover {
-          background-color: #e4e6eb;
+          background-color: var(--secondary-color);
+          transform: translateY(-1px);
         }
       }
 
@@ -406,10 +431,11 @@ import {
         align-items: center;
         padding: 10px 16px;
         cursor: pointer;
-        transition: background-color 0.2s ease;
+        transition: all var(--transition-fast);
 
         &:hover {
-          background-color: #f0f2f5;
+          background-color: var(--hover-color);
+          transform: translateX(4px);
         }
       }
 
@@ -419,15 +445,15 @@ import {
         justify-content: center;
         width: 36px;
         height: 36px;
-        border-radius: 50%;
+        border-radius: var(--radius-full);
         margin-right: 12px;
-        background-color: #e4e6eb;
-        color: #050505;
+        background-color: var(--hover-color);
+        color: var(--text-color);
         overflow: hidden;
 
         &.user {
-          background-color: #e1f5fe;
-          color: #0288d1;
+          background-color: var(--secondary-color);
+          color: var(--primary-color);
         }
 
         .user-avatar {
@@ -437,8 +463,8 @@ import {
         }
 
         &.post {
-          background-color: #e8f5e9;
-          color: #388e3c;
+          background-color: var(--secondary-color);
+          color: var(--primary-color);
         }
       }
 
@@ -449,17 +475,19 @@ import {
       .result-name {
         font-size: 15px;
         font-weight: 500;
-        color: #050505;
+        color: var(--text-color);
       }
 
       .result-meta {
         font-size: 13px;
-        color: #65676b;
+        color: var(--text-color);
+        opacity: 0.7;
       }
 
       .result-content {
         font-size: 13px;
-        color: #65676b;
+        color: var(--text-color);
+        opacity: 0.7;
         margin-top: 4px;
         white-space: nowrap;
         overflow: hidden;
@@ -475,15 +503,16 @@ import {
         .spinner {
           width: 24px;
           height: 24px;
-          border: 2px solid #f3f3f3;
-          border-top: 2px solid #4a90e2;
+          border: 2px solid var(--hover-color);
+          border-top: 2px solid var(--primary-color);
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin-bottom: 12px;
         }
 
         span {
-          color: #65676b;
+          color: var(--text-color);
+          opacity: 0.7;
           font-size: 14px;
         }
       }
@@ -500,7 +529,7 @@ import {
       .view-all-container {
         text-align: center;
         padding: 12px 0;
-        border-top: 1px solid #e4e6eb;
+        border-top: 1px solid var(--border-color);
       }
 
       .recent-list {
@@ -512,22 +541,25 @@ import {
         align-items: center;
         padding: 10px 0;
         cursor: pointer;
+        transition: all var(--transition-fast);
 
         &:hover {
-          background-color: #f0f2f5;
+          background-color: var(--hover-color);
+          transform: translateX(4px);
         }
 
         .recent-icon {
           display: flex;
           align-items: center;
-          color: #65676b;
+          color: var(--text-color);
+          opacity: 0.7;
           margin-right: 12px;
         }
 
         .recent-text {
           flex: 1;
           font-size: 14px;
-          color: #050505;
+          color: var(--text-color);
         }
 
         .remove-recent {
@@ -536,16 +568,18 @@ import {
           justify-content: center;
           background: none;
           border: none;
-          color: #65676b;
+          color: var(--text-color);
+          opacity: 0.7;
           cursor: pointer;
           width: 24px;
           height: 24px;
-          border-radius: 50%;
-          opacity: 0.7;
+          border-radius: var(--radius-full);
+          transition: all var(--transition-fast);
 
           &:hover {
-            background-color: #e4e6eb;
+            background-color: var(--hover-color);
             opacity: 1;
+            color: var(--error-color);
           }
         }
       }

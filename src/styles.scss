@@ -1,5 +1,5 @@
 /* src/styles.scss */
-/* You can add global styles to this file, and also import other style files */
+/* Enhanced global theming for Grasslandia */
 
 * {
   margin: 0;
@@ -8,40 +8,147 @@
 }
 
 :root {
-  /* Default light theme values that will be overridden by the theme service */
-  --background-color: #f0f2f5;
+  /* Default light theme values */
+  --background-color: #f9fafb;
   --text-color: #1c1e21;
   --card-background: #ffffff;
-  --primary-color: #1877f2;
-  --secondary-color: #e4e6eb;
-  --border-color: #dddfe2;
+  --primary-color: #4caf50; /* Grasslandia green */
+  --primary-light: #80e27e;
+  --primary-dark: #087f23;
+  --secondary-color: #e8f5e9;
+  --border-color: #e0e0e0;
   --hover-color: #f5f7fa;
-  --accent-color: #4a90e2;
-  --success-color: #42b72a;
-  --error-color: #e41e3f;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --accent-color: #66bb6a;
+  --success-color: #43a047;
+  --error-color: #e53935;
+  --warning-color: #ffb74d;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --avatar-border: 2px solid var(--card-background);
+  --header-height: 64px;
+
+  /* Modern Spacing System */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Text sizes */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
 }
 
+/* Dark Theme */
+.theme-dark {
+  --background-color: #121212;
+  --text-color: #e4e6eb;
+  --card-background: #1e1e1e;
+  --primary-color: #4caf50;
+  --primary-light: #80e27e;
+  --primary-dark: #087f23;
+  --secondary-color: #2d332a;
+  --border-color: #2c2c2c;
+  --hover-color: #2a2a2a;
+  --accent-color: #66bb6a;
+  --success-color: #43a047;
+  --error-color: #f44336;
+  --warning-color: #ffa726;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --avatar-border: 2px solid var(--card-background);
+}
+
+/* Night Blue Theme */
+.theme-night-blue {
+  --background-color: #0f172a;
+  --text-color: #e2e8f0;
+  --card-background: #1e293b;
+  --primary-color: #4ade80;
+  --primary-light: #86efac;
+  --primary-dark: #22c55e;
+  --secondary-color: #2c3e50;
+  --border-color: #334155;
+  --hover-color: #2a3649;
+  --accent-color: #34d399;
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --avatar-border: 2px solid var(--card-background);
+}
+
+/* Green Grass Theme */
+.theme-green-grass {
+  --background-color: #effaf0;
+  --text-color: #1a3a20;
+  --card-background: #ffffff;
+  --primary-color: #2f9e44;
+  --primary-light: #8ce99a;
+  --primary-dark: #176529;
+  --secondary-color: #d3f9d8;
+  --border-color: #b2f2bb;
+  --hover-color: #e6f9e7;
+  --accent-color: #40c057;
+  --success-color: #2b8a3e;
+  --error-color: #e03131;
+  --warning-color: #f08c00;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --avatar-border: 2px solid var(--card-background);
+}
+
+/* Base Styles */
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--background-color);
   color: var(--text-color);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color var(--transition-normal),
+    color var(--transition-normal);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Apply theme styles to common elements */
 a {
   color: var(--primary-color);
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--accent-color);
+  color: var(--primary-dark);
 }
 
 input,
@@ -50,86 +157,308 @@ select {
   background-color: var(--card-background);
   color: var(--text-color);
   border: 1px solid var(--border-color);
+  font-family: var(--font-sans);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
 button {
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  font-family: var(--font-sans);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+    transform var(--transition-fast), opacity var(--transition-fast);
 }
 
-button:hover {
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-color);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Glassmorphism Effects */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.theme-dark .glass {
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+}
+
+.btn-secondary:hover {
   background-color: var(--hover-color);
 }
 
-/* Card styling */
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card Styling */
 .card {
   background-color: var(--card-background);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-normal),
+    transform var(--transition-normal);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-hover);
 }
 
-/* Special styling for auth pages to adjust padding */
-.auth-page .main-content {
-  padding-left: 0 !important;
+/* Avatar Styles */
+.avatar {
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  font-weight: 600;
+  border: var(--avatar-border);
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-sm);
+}
+
+.avatar-md {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-md);
+}
+
+.avatar-lg {
+  width: 64px;
+  height: 64px;
+  font-size: var(--text-xl);
+}
+
+.avatar-xl {
+  width: 96px;
+  height: 96px;
+  font-size: var(--text-2xl);
+}
+
+/* Badge Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  position: absolute;
+  background-color: var(--error-color);
+  color: white;
+  min-width: 18px;
+  height: 18px;
 }
 
 /* Theme transition classes */
 .theme-transition * {
-  transition: background-color 0.3s ease, color 0.3s ease,
-    border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color var(--transition-normal),
+    color var(--transition-normal), border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
 }
 
 /* Display mode classes */
 .display-default .content-card {
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 .display-compact .content-card {
-  padding: 8px;
-  margin-bottom: 8px;
+  padding: var(--space-sm);
+  margin-bottom: var(--space-sm);
   font-size: 0.95em;
 }
 
-/* Theme-specific overrides for components */
-.theme-dark {
-  .material-icons {
-    color: var(--text-color);
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-
-  .card {
-    border: 1px solid var(--border-color);
-  }
-}
-
-.theme-night-blue {
-  .card {
-    border: 1px solid var(--border-color);
-  }
-
-  .sidebar {
-    background-color: #1c2c3c;
-    border-right: 1px solid var(--border-color);
+  to {
+    opacity: 1;
   }
 }
 
-.theme-green-grass {
-  .sidebar {
-    background-color: #f1f8f1;
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
   }
-
-  .primary-button {
-    background-color: var(--primary-color);
-    color: white;
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Special styling for auth pages */
+.auth-page .main-content {
+  padding-left: 0 !important;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
+  :root {
+    --text-md: 15px;
+  }
+
   .auth-page .main-content {
     padding-left: 0 !important;
   }
+
+  .card {
+    border-radius: var(--radius-md);
+  }
+}
+
+/* Material icons compatibility */
+.material-icons {
+  font-size: 24px;
+  line-height: 1;
+  vertical-align: middle;
+  color: inherit;
+}
+/* Add this to src/styles.scss to ensure RGB variables are available for rgba usage */
+
+:root {
+  /* RGB versions of colors for rgba usage */
+  --primary-color-rgb: 76, 175, 80; /* #4caf50 */
+  --primary-dark-rgb: 56, 142, 60; /* #388e3c */
+  --primary-light-rgb: 129, 199, 132; /* #81c784 */
+  --accent-color-rgb: 102, 187, 106; /* #66bb6a */
+  --success-color-rgb: 67, 160, 71; /* #43a047 */
+  --error-color-rgb: 229, 57, 53; /* #e53935 */
+  --warning-color-rgb: 255, 183, 77; /* #ffb74d */
+}
+
+.theme-dark {
+  --primary-color-rgb: 76, 175, 80; /* #4caf50 */
+  --primary-dark-rgb: 56, 142, 60; /* #388e3c */
+  --primary-light-rgb: 129, 199, 132; /* #81c784 */
+  --accent-color-rgb: 102, 187, 106; /* #66bb6a */
+  --success-color-rgb: 67, 160, 71; /* #43a047 */
+  --error-color-rgb: 244, 67, 54; /* #f44336 */
+  --warning-color-rgb: 255, 167, 38; /* #ffa726 */
+}
+
+.theme-night-blue {
+  --primary-color-rgb: 74, 222, 128; /* #4ade80 */
+  --primary-dark-rgb: 34, 197, 94; /* #22c55e */
+  --primary-light-rgb: 134, 239, 172; /* #86efac */
+  --accent-color-rgb: 52, 211, 153; /* #34d399 */
+  --success-color-rgb: 16, 185, 129; /* #10b981 */
+  --error-color-rgb: 239, 68, 68; /* #ef4444 */
+  --warning-color-rgb: 245, 158, 11; /* #f59e0b */
+}
+
+.theme-green-grass {
+  --primary-color-rgb: 47, 158, 68; /* #2f9e44 */
+  --primary-dark-rgb: 23, 101, 41; /* #176529 */
+  --primary-light-rgb: 140, 233, 154; /* #8ce99a */
+  --accent-color-rgb: 64, 192, 87; /* #40c057 */
+  --success-color-rgb: 43, 138, 62; /* #2b8a3e */
+  --error-color-rgb: 224, 49, 49; /* #e03131 */
+  --warning-color-rgb: 240, 140, 0; /* #f08c00 */
+}
+
+/* Add transitions for theme switching */
+html,
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body * {
+  transition: background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease, box-shadow 0.3s ease;
 }
