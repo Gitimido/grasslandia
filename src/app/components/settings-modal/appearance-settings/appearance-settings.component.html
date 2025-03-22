@@ -12,7 +12,17 @@
                 <div class="theme-color" [style.backgroundColor]="theme.color">
                     <span class="material-icons">{{ theme.icon }}</span>
                 </div>
-                <div class="theme-label">{{ theme.label }}</div>
+                <div class="theme-label">
+                    <!-- Main title - always shown -->
+                    <span class="label-title">{{ theme.label.split('(')[0].trim() }}</span>
+
+                    <!-- Subtitle - only shown if exists -->
+                    <ng-container *ngIf="theme.label.includes('(')">
+                        <span class="label-subtitle">
+                            ({{ theme.label.split('(')[1] }}
+                        </span>
+                    </ng-container>
+                </div>
             </div>
         </div>
     </div>

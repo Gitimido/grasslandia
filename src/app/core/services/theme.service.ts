@@ -78,7 +78,7 @@ export class ThemeService {
   private initializeTheme(): void {
     if (isPlatformBrowser(this.platformId)) {
       const savedTheme = localStorage.getItem('theme') as ThemeOption;
-      const theme = savedTheme || 'light';
+      const theme = savedTheme || 'night-blue'; // Default theme
       this.setTheme(theme);
     }
   }

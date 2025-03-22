@@ -1,1 +1,134 @@
-<p>search-results works!</p>
+<app-side-nav></app-side-nav>
+
+<div class="search-results-container" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <!-- Selected Post Detail View -->
+    <div *ngIf="selectedPost" class="post-detail-view">
+        <div class="detail-header">
+            <button class="back-btn" (click)="closePostDetail()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor" />
+                </svg>
+                Back to search results
+            </button>
+        </div>
+
+        <div class="detail-content">
+            <app-post-card [post]="selectedPost" (deleted)="handlePostDeleted($event)"></app-post-card>
+
+            <!-- Comments Section -->
+            <div class="comments-container">
+                <app-comments-section [postId]="selectedPost.id"></app-comments-section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regular Search View -->
+    <div *ngIf="!selectedPost">
+        <div class="search-header">
+            <div class="search-form">
+                <form [formGroup]="searchForm" (ngSubmit)="onSubmit()">
+                    <div class="search-input-container">
+                        <span class="search-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                                <path
+                                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                                    fill="currentColor" />
+                            </svg>
+                        </span>
+                        <input type="text" formControlName="query" class="search-input"
+                            placeholder="Search Grasslandia..." autofocus>
+                        <button type="submit" class="search-btn">Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="search-content">
+            <div class="search-filters">
+                <div class="filter-section">
+                    <h3>Filter Results</h3>
+                    <div class="filter-options">
+                        <button class="filter-btn" [class.active]="activeFilter === 'all'" (click)="setFilter('all')">
+                            All Results
+                        </button>
+                        <button class="filter-btn" [class.active]="activeFilter === 'posts'"
+                            (click)="setFilter('posts')">
+                            Posts
+                        </button>
+                        <button class="filter-btn" [class.active]="activeFilter === 'people'"
+                            (click)="setFilter('people')">
+                            People
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-area">
+                <!-- Loading State -->
+                <div *ngIf="isLoading" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Searching...</p>
+                </div>
+
+                <!-- Error State -->
+                <div *ngIf="error" class="error-state">
+                    <p>{{ error }}</p>
+                    <button (click)="onSubmit()" class="retry-btn">Try Again</button>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="!isLoading && !error && noResults" class="empty-state">
+                    <p>No results found for "{{ searchQuery }}"</p>
+                    <p class="empty-suggestions">
+                        Try using different keywords or checking your spelling.
+                    </p>
+                </div>
+
+                <!-- Results -->
+                <div *ngIf="!isLoading && !error && !noResults" class="results-list">
+                    <!-- People Section -->
+                    <div *ngIf="(activeFilter === 'all' || activeFilter === 'people') && users.length > 0"
+                        class="results-section">
+                        <h2 *ngIf="activeFilter === 'all'">People</h2>
+
+                        <div class="people-results">
+                            <div *ngFor="let user of users" class="person-card"
+                                [routerLink]="['/profile', user.username]">
+                                <div class="person-avatar">
+                                    <img [src]="user.avatarUrl || '/assets/default-avatar.png'"
+                                        [alt]="user.fullName || user.username">
+                                </div>
+                                <div class="person-info">
+                                    <h3 class="person-name">
+                                        {{ user.fullName || user.username }}
+                                    </h3>
+                                    <p class="person-username">{{ user.username }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Post Section -->
+                    <div *ngIf="(activeFilter === 'all' || activeFilter === 'posts') && posts.length > 0"
+                        class="results-section">
+                        <h2 *ngIf="activeFilter === 'all'">Posts</h2>
+
+                        <div class="posts-results">
+                            <div *ngFor="let post of posts" class="post-result-item" (click)="viewPostDetail(post)">
+                                <app-post-card [post]="post" (deleted)="handlePostDeleted($event)"></app-post-card>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Load More Button -->
+                    <div *ngIf="canLoadMore" class="load-more-container">
+                        <button (click)="loadMore()" class="load-more-btn" [disabled]="isLoadingMore">
+                            <span *ngIf="!isLoadingMore">Load More Results</span>
+                            <span *ngIf="isLoadingMore" class="loading-spinner-sm"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

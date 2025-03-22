@@ -40,7 +40,7 @@ export class AppearanceSettingsComponent implements OnInit {
     },
     {
       value: 'green-grass' as ThemeOption,
-      label: 'Green Grass',
+      label: 'Soft Green ( Good for Eyes )',
       color: '#4caf50',
       icon: 'grass',
     },

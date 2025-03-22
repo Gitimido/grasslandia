@@ -40,7 +40,6 @@ h4 {
   align-items: flex-start;
   gap: 24px;
 }
-
 .current-picture {
   width: 100px;
   height: 100px;
@@ -48,14 +47,75 @@ h4 {
   overflow: hidden;
   border: var(--avatar-border);
   box-shadow: var(--shadow);
+  position: relative;
+  cursor: pointer;
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+
+  &:hover .picture-overlay {
+    opacity: 1;
+  }
 }
 
+.picture-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.camera-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.camera-icon {
+  width: 100%;
+  height: 100%;
+  color: white;
+}
+
+.hidden-uploader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  z-index: 10;
+}
+
+.upload-instructions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 14px;
+
+    &.file-requirements {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  }
+}
 .profile-form {
   display: flex;
   flex-direction: column;

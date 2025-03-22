@@ -160,25 +160,19 @@
   margin-right: 20px;
   position: relative;
   z-index: 2;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
 
   img {
-    width: 120px;
-    height: 120px;
-    border-radius: var(--radius-full);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border: 4px solid var(--card-background);
     background-color: var(--hover-color);
-    object-fit: cover;
     box-shadow: var(--shadow);
     transition: transform var(--transition-fast);
-
-    &:hover {
-      transform: scale(1.03);
-    }
-  }
-
-  @media (max-width: 768px) {
-    margin-right: 0;
-    margin-bottom: 16px;
   }
 }
 
@@ -193,8 +187,51 @@
   align-items: center;
   opacity: 0;
   transition: opacity var(--transition-normal);
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.camera-icon-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+}
+
+.camera-icon {
+  width: 100%;
+  height: 100%;
+  color: white;
+}
+
+.hidden-uploader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  z-index: 10;
+}
+.avatar-update-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
   background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
+  border-radius: 50%; /* Ensure it's a perfect circle */
+  overflow: hidden; /* Prevent content from spilling outside */
 
   &:hover {
     opacity: 1;
