@@ -16,12 +16,7 @@ import { selectIsAuthenticated } from '../../core/store/Auth/auth.selectors';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
   standalone: true,
-  imports: [
-    CommonModule,
-    FeedComponent,
-    CreatePostComponent,
-    AuthDebugComponent,
-  ],
+  imports: [CommonModule, FeedComponent, CreatePostComponent],
 })
 export class HomeComponent implements OnInit {
   // For the feed styling

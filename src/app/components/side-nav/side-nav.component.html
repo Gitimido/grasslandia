@@ -12,22 +12,35 @@
 
             <!-- Collapsed logo icon with SVG -->
             <div class="logo-icon" [class.hidden]="!isCollapsed" #logoIcon>
-                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg #svgElement xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="300" height="300">
+                    <!-- Outer circle -->
                     <path
                         d="M50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50C100 22.4 77.6 0 50 0ZM50 85C30.7 85 15 69.3 15 50C15 30.7 30.7 15 50 15C69.3 15 85 30.7 85 50C85 69.3 69.3 85 50 85Z"
-                        fill="url(#gradient1)" />
-                    <path
-                        d="M65 40H55V30C55 27.2 52.8 25 50 25C47.2 25 45 27.2 45 30V40H35C32.2 40 30 42.2 30 45C30 47.8 32.2 50 35 50H45V70C45 72.8 47.2 75 50 75C52.8 75 55 72.8 55 70V50H65C67.8 50 70 47.8 70 45C70 42.2 67.8 40 65 40Z"
-                        fill="url(#gradient2)" />
+                        fill="var(--secondary-color)" />
+
+                    <!-- Sphere with highlight effect -->
+                    <g #movingPoint transform="translate(50,50)">
+                        <!-- Base sphere -->
+                        <circle cx="0" cy="0" r="6" fill="url(#sphereGradient)" />
+
+                        <!-- Highlight effect -->
+                        <circle cx="-2" cy="-2" r="2" fill="white" opacity="0.7" />
+
+                        <!-- Subtle pulse circle -->
+                        <circle cx="0" cy="0" r="8" stroke="var(--primary-color)" stroke-width="1" fill="none"
+                            opacity="0.6">
+                            <animate attributeName="r" values="8;10;8" dur="1.5s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.5s" repeatCount="indefinite" />
+                        </circle>
+                    </g>
+
                     <defs>
-                        <linearGradient id="gradient1" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="#66D7AD" />
-                            <stop offset="1" stop-color="#4DB896" />
-                        </linearGradient>
-                        <linearGradient id="gradient2" x1="30" y1="25" x2="70" y2="75" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="#FFFFFF" />
-                            <stop offset="1" stop-color="#F0F0F0" />
-                        </linearGradient>
+                        <!-- Sphere gradient for 3D effect -->
+                        <radialGradient id="sphereGradient" cx="0.3" cy="0.3" r="0.8">
+                            <stop offset="0%" stop-color="var(--primary-color)" stop-opacity="1" />
+                            <stop offset="100%" stop-color="var(--accent-color, var(--primary-color))"
+                                stop-opacity="0.7" />
+                        </radialGradient>
                     </defs>
                 </svg>
             </div>

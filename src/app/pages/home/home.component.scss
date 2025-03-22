@@ -39,7 +39,7 @@
   overflow: hidden;
   background-color: var(--card-background);
   transition: all var(--transition-normal);
-  border: 1px solid var(--border-color);
+  // border: 1px solid var(--border-color); <- Remove or comment out this line
   animation: slideDown 0.4s ease;
 
   @keyframes slideDown {

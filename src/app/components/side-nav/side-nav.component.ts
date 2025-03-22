@@ -38,6 +38,8 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('logoText') logoTextRef!: ElementRef;
   @ViewChild('logoIcon') logoIconRef!: ElementRef;
   @ViewChildren('letterElement') letterElements!: QueryList<ElementRef>;
+  @ViewChild('svgElement') svgElement!: ElementRef;
+  @ViewChild('movingPoint') movingPoint!: ElementRef;
 
   // Add this property to store logo characters
   logoChars = ['G', 'R', 'A', 'S', 'S', 'L', 'A', 'N', 'D', 'I', 'A'];
@@ -98,6 +100,11 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
     // Initialize GSAP animations
     setTimeout(() => {
       this.initLogoAnimations();
+
+      // Make sure SVG elements are available
+      if (this.svgElement && this.movingPoint) {
+        console.log('SVG mouse tracking initialized');
+      }
     }, 100);
   }
 
@@ -222,75 +229,10 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // Setup logo icon animations
-  setupLogoIconAnimation(): void {
-    if (this.logoIconRef) {
-      const iconElement = this.logoIconRef.nativeElement;
-      const iconSpan = iconElement.querySelector('span');
-
-      // Create hover effect timeline
-      const hoverTimeline = gsap.timeline({ paused: true });
-
-      hoverTimeline
-        .to(iconElement, {
-          duration: 0.2,
-          scale: 1.1,
-          ease: 'power2.out',
-        })
-        .to(
-          iconSpan,
-          {
-            duration: 0.4,
-            rotationY: 360,
-            ease: 'power1.inOut',
-          },
-          0
-        );
-
-      // Add mouse events to icon
-      iconElement.addEventListener('mouseenter', () => {
-        hoverTimeline.restart();
-      });
-
-      // Add initial entrance animation
-      gsap.from(iconElement, {
-        duration: 0.6,
-        scale: 0,
-        rotation: -45,
-        ease: 'back.out(1.7)',
-        delay: 0.2,
-      });
-    }
-  }
+  setupLogoIconAnimation(): void {}
 
   // Setup animations for transitioning between expanded and collapsed states
-  setupLogoTransitionAnimations(): void {
-    // Create a master timeline that will handle the state transitions
-    const masterTimeline = gsap.timeline({ paused: true });
-
-    if (this.logoTextRef && this.logoIconRef) {
-      const textElement = this.logoTextRef.nativeElement;
-      const iconElement = this.logoIconRef.nativeElement;
-
-      // Animation for collapsing
-      masterTimeline
-        .to(textElement, {
-          duration: 0.3,
-          scale: 0,
-          opacity: 0,
-          ease: 'power2.in',
-        })
-        .from(iconElement, {
-          duration: 0.4,
-          scale: 0,
-          opacity: 0,
-          rotation: -45,
-          ease: 'back.out(1.7)',
-        });
-
-      // Store the timeline for use in toggle methods
-      this.logoTransitionTimeline = masterTimeline;
-    }
-  }
+  setupLogoTransitionAnimations(): void {}
 
   hasAvatar(): boolean {
     return !!this.userProfile?.avatarUrl;
@@ -366,6 +308,44 @@ export class SideNavComponent implements OnInit, OnDestroy, AfterViewInit {
         this.isUserMenuOpen = false;
       }
     }
+  }
+  @HostListener('document:mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
+    // Only track mouse if we have the required elements
+    if (this.svgElement && this.movingPoint) {
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Calculate relative position in the viewport (0 to 1)
+      const relativeX = event.clientX / viewportWidth;
+      const relativeY = event.clientY / viewportHeight;
+
+      // Map to SVG coordinate space (keeping within the circle)
+      // Calculate the center point for the transform
+      const svgX = relativeX * 70 + 15;
+      const svgY = relativeY * 70 + 15;
+
+      // Update the position of the sphere group using transform
+      this.movingPoint.nativeElement.setAttribute(
+        'transform',
+        `translate(${svgX},${svgY})`
+      );
+    }
+  }
+
+  private calculatePosition(mouseX: number, mouseY: number) {
+    const rect = this.svgElement.nativeElement.getBoundingClientRect();
+
+    // Calculate relative position (0 to 1)
+    const relativeX = (mouseX - rect.left) / rect.width;
+    const relativeY = (mouseY - rect.top) / rect.height;
+
+    // Map to SVG coordinate space (15 to 85 to keep within the inner circle)
+    const svgX = 15 + relativeX * 70;
+    const svgY = 15 + relativeY * 70;
+
+    return { x: svgX, y: svgY };
   }
 
   openSettings(tab: 'profile' | 'appearance' | 'account' = 'profile'): void {
