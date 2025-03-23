@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FeedComponent } from '../../components/feed/feed.component';
 import { CreatePostComponent } from '../../components/create-post/create-post.component';
-import { AuthDebugComponent } from '../../components/auth-debug/auth-debug.component';
 import { FeedStyle } from '../../components/feed/feed-styles.enum';
 import { SideNavService } from '../../core/services/side-nav.service';
 import { Post } from '../../models';

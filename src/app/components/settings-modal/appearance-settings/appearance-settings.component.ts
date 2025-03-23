@@ -1,7 +1,7 @@
 // src/app/components/settings-modal/appearance-settings/appearance-settings.component.ts
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { User } from '../../../models';
+import { User } from '../../../models/user.model';
 import {
   ThemeService,
   ThemeOption,

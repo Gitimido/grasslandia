@@ -4,7 +4,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environment';
 import { Observable, from, throwError, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { User, IUser } from '../../models';
+import { User, IUser } from '../../models/user.model';
 import { AuthService } from './auth.service';
 import {
   selectCurrentUser,

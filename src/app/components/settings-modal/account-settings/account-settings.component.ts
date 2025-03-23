@@ -9,7 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { User } from '../../../models';
+import { User } from '../../../models/user.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { finalize } from 'rxjs/operators';
 

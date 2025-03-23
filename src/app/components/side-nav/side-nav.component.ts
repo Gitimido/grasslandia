@@ -23,7 +23,7 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { SearchPopupComponent } from '../search-popup/search-popup.component';
 import { Subscription, filter } from 'rxjs';
 import { UserService } from '../../core/services/user.service';
-import { User } from '../../models';
+import { User } from '../../models/user.model';
 import { gsap } from 'gsap';
 import { SettingsService } from '../../core/services/settings.service';
 

@@ -8,7 +8,7 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
-import { User } from '../../../models';
+import { User } from '../../../models/user.model';
 import { UserService } from '../../../core/services/user.service';
 import { ProfilePictureUploaderComponent } from '../../../components/profile-picture-uploader/profile-picture-uploader.component';
 import { Media } from '../../../models';
